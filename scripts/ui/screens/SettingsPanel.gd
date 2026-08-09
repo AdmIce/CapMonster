@@ -106,6 +106,16 @@ func _montar_grafico(column: VBoxContainer) -> void:
 	# A caixinha mostra o que foi **escolhido**, não o que está rodando: no
 	# editor os dois divergem, e ver a opção voltar sozinha parecia bug de save.
 	var alta := Design.check("Qualidade alta", Renderizador.escolhido() == Renderizador.QUALIDADE)
+
+	# Dizer em qual modo o jogo **está** agora, e não só qual foi escolhido.
+	# Sem isto, "liguei e não mudou nada" não tem como ser respondido: o jogador
+	# não vê diferença entre a troca não ter pegado e a placa não aguentar.
+	var atual := Design.label(
+		"Rodando agora em: %s" % ("Qualidade alta (Vulkan)" if Renderizador.em_qualidade() else "Compatível (OpenGL)"),
+		Design.FS_LABEL, Design.GOLD
+	)
+	column.add_child(atual)
+
 	var aviso := Design.caption(
 		"Luz e sombra melhores. Exige placa de vídeo com Vulkan — se o jogo não abrir "
 		+ "depois de ligar, ele volta sozinho para o modo compatível."

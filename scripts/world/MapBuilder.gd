@@ -311,6 +311,33 @@ static func _add_tile_collider(parent: Node3D, centro: Vector3, lado: float, alt
 	parent.add_child(corpo)
 
 
+## Quanto baixar a exposição e o ambiente no modo compatibilidade.
+##
+## O renderizador de compatibilidade não comprime as luzes acima de 1 como o
+## Forward+ faz: tudo que é claro satura em branco, e a cena inteira sai lavada.
+## Medindo o mesmo enquadramento nos dois, a média de brilho era 211 contra 166 —
+## o caminho de terra virava papel. Estes dois fatores põem os dois modos na
+## mesma faixa.
+##
+## Não é "escurecer por escurecer": é desfazer a saturação que a falta de
+## tonemap causa. Em Forward+ nada disso é aplicado.
+const EXPOSICAO_COMPATIBILIDADE := 0.70
+const AMBIENTE_COMPATIBILIDADE := 0.85
+
+
+## Verdadeiro no modo compatibilidade. O Forward+ desenha através de um
+## RenderingDevice; a compatibilidade não tem nenhum.
+static func em_compatibilidade() -> bool:
+	return RenderingServer.get_rendering_device() == null
+
+
+static func _ajustar_ao_renderizador(environment: Environment) -> void:
+	if not em_compatibilidade():
+		return
+	environment.tonemap_exposure = EXPOSICAO_COMPATIBILIDADE
+	environment.ambient_light_energy *= AMBIENTE_COMPATIBILIDADE
+
+
 static func build_environment(parent: Node3D, map_data: Dictionary) -> void:
 	var ambient: Dictionary = map_data.get("ambient", {})
 
@@ -331,6 +358,7 @@ static func build_environment(parent: Node3D, map_data: Dictionary) -> void:
 	environment.ambient_light_energy = float(ambient.get("ambient_energy", 0.55))
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.tonemap_white = 1.2
+	_ajustar_ao_renderizador(environment)
 
 	if bool(ambient.get("fog_enabled", false)):
 		environment.fog_enabled = true
