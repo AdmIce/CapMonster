@@ -78,6 +78,7 @@ var _facing_angle: float = 0.0
 var _jumping := false
 var _step_distance := 0.0
 var montaria: Montaria = null
+var pet: PetAcompanhante = null
 ## Altura em que o avatar esta agora, entre o chao (0) e a sela. Interpolada
 ## para a subida nao ser um teleporte.
 var _altura_na_sela: float = 0.0
@@ -520,3 +521,42 @@ func _atualizar_montaria(delta: float) -> void:
 	_altura_na_sela = move_toward(_altura_na_sela, alvo, passo * delta)
 	if avatar != null:
 		avatar.position.y = _altura_na_sela
+
+
+# --- pet ----------------------------------------------------------------------
+
+## Chama ou dispensa o acompanhante. Devolve true se ele ficou chamado.
+##
+## O pet entra na cena, e nao neste no: preso ao jogador ele giraria junto no
+## mesmo quadro e pareceria peca de roupa. Solto, ele persegue um ponto ao lado
+## com atraso, e e o atraso que faz parecer bicho.
+func alternar_pet(caminho: String) -> bool:
+	if pet != null and is_instance_valid(pet):
+		pet.queue_free()
+		pet = null
+		return false
+	if caminho == "":
+		return false
+
+	pet = PetAcompanhante.criar(caminho)
+	# No mundo, ao lado do jogador -- nao como filho dele.
+	var mundo := get_parent()
+	if mundo == null:
+		pet = null
+		return false
+	mundo.add_child(pet)
+	pet.seguir(self)
+	return true
+
+
+## Rechama o pet ao entrar no mundo, se ele estava chamado quando o jogo fechou.
+func restaurar_pet() -> void:
+	if GameManager.player == null:
+		return
+	if not bool(GameManager.player.get_flag("pet_ativo", false)):
+		return
+	for item_id in GameManager.player.inventory.keys():
+		var item := DataManager.get_item(String(item_id))
+		if String(item.get("effect", "")) == "pet":
+			alternar_pet(String(item.get("pet_modelo", "")))
+			return

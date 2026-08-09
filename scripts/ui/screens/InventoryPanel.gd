@@ -742,6 +742,22 @@ func _usar_item(item_id: String) -> void:
 				total += criatura.heal(DamageCalculator.compute_heal(criatura.max_hp(), valor))
 			AudioManager.tocar(&"cura")
 			_rodape.text = "A equipe recuperou %d de vida no total." % total
+		"pet":
+			# O pet nao e consumido: o item fica na mochila e o clique so liga e
+			# desliga. Por isso ele sai antes do `save_now` la embaixo, que e
+			# para item que mudou de quantidade.
+			var jogadores := get_tree().get_nodes_in_group("player_controller")
+			if jogadores.is_empty():
+				_rodape.text = "Só no mundo: %s não aparece aqui." % item.get("name", item_id)
+				return
+			var controlador := jogadores[0] as PlayerController
+			var chamado := controlador.alternar_pet(String(item.get("pet_modelo", "")))
+			dados.set_flag("pet_ativo", chamado)
+			GameManager.save_now("pet")
+			AudioManager.tocar(&"ui_alternar")
+			_rodape.text = ("%s está te acompanhando." if chamado else "%s voltou para a mochila.") % item.get("name", item_id)
+			_redesenhar()
+			return
 		_:
 			if String(item.get("category", "")) == "capture":
 				_rodape.text = "%s só funciona durante uma batalha." % item.get("name", item_id)

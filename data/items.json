@@ -78,6 +78,19 @@
       "color": "#C0552F"
     },
     {
+      "_comentario": "Pet. `effect` = pet faz a mochila tratar o clique como chamar/dispensar, e `pet_modelo` diz qual bicho aparece - trocar de pet e trocar esta linha.",
+      "id": "sentinela_alada",
+      "name": "Sentinela Alada",
+      "category": "pet",
+      "description": "Um guardiao de pedra que flutua ao seu lado. Clique para chamar ou dispensar.",
+      "effect": "pet",
+      "pet_modelo": "res://assets/models/pets/sentinela.glb",
+      "stackable": false,
+      "max_stack": 1,
+      "value": 0,
+      "color": "#9FB6C4"
+    },
+    {
       "id": "ridge_pass_token",
       "name": "Selo do Passo da Serra",
       "category": "quest",
@@ -90,6 +103,7 @@
   ],
   "starting_inventory": {
     "binding_core": 8,
-    "vital_draught": 3
+    "vital_draught": 3,
+    "sentinela_alada": 1
   }
 }

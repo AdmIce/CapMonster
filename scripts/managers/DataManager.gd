@@ -42,6 +42,7 @@ const ITEM_CATEGORY_NAMES := {
 	"capture": "Captura",
 	"consumable": "Consumível",
 	"material": "Material",
+	"pet": "Companheiro",
 	"quest": "Missão",
 }
 

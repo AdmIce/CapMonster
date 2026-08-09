@@ -101,6 +101,9 @@ func _abrir_painel_de_teste() -> void:
 				player.sentar()
 			"montaria":
 				player.montar()
+			"pet":
+				var dados := DataManager.get_item("sentinela_alada")
+				player.alternar_pet(String(dados.get("pet_modelo", "")))
 			"descanso":
 				# Descansar exige andar ate a fogueira e apertar E, e um teste
 				# automatico nao faz nenhum dos dois.
@@ -202,6 +205,9 @@ func _build_player() -> void:
 	player.apply_appearance(GameManager.player.appearance)
 	player.teleport_to(_resolve_spawn_position())
 	player.moved.connect(func(position: Vector2): GameManager.record_position(position))
+	# O pet estava chamado quando o jogo fechou? Volta chamado. Ter de chamar de
+	# novo a cada mapa seria trabalho para o jogador sem motivo nenhum.
+	player.restaurar_pet()
 
 
 func _resolve_spawn_position() -> Vector2:
