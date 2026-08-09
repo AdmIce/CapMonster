@@ -26,6 +26,15 @@ const ALTURA_DE_POUSO := 0.12
 const ACCELERATION := 42.0
 const FRICTION := 38.0
 const TURN_SPEED := 14.0
+## Pulo: velocidade inicial e a "gravidade" só dele. O mundo não tem gravidade
+## (levitar escala da física), então a parábola é calculada aqui. Medido a
+## 6.5 de subida / 22 de queda dá ~0,9 m de altura e ~0,6 s de ar.
+const JUMP_SPEED := 6.5
+const JUMP_GRAVITY := 22.0
+## Metros percorridos entre um passo e outro, por ritmo. Com o jaleco andando em
+## 5.4 m/s, 1.6 m dá ~3,4 passos/s; correndo a 8.6 m/s, 2.0 m dá ~4,3 passos/s.
+const STEP_WALK := 1.6
+const STEP_RUN := 2.0
 ## How far the player can drift before the position is worth re-recording.
 const POSITION_REPORT_DISTANCE := 1.5
 
@@ -51,6 +60,8 @@ var _current_target: Interactable = null
 var _last_reported := Vector2(INF, INF)
 var _last_plane := Vector2.ZERO
 var _facing_angle: float = 0.0
+var _jumping := false
+var _step_distance := 0.0
 
 
 func _ready() -> void:
@@ -123,6 +134,10 @@ func teleport_to(plane: Vector2) -> void:
 	velocity = Vector3.ZERO
 	_last_reported = plane
 	_last_plane = plane
+	# Teleporte cancela pulo e passo em andamento: chega no chão, e não toca
+	# passo logo depois por causa da distância do salto.
+	_jumping = false
+	_step_distance = 0.0
 
 
 # --- loop ---------------------------------------------------------------------
@@ -154,31 +169,88 @@ func _physics_process(delta: float) -> void:
 	var target_speed := VELOCIDADE_VOO if voando else (RUN_SPEED if running else WALK_SPEED)
 	var desired := direcao * target_speed
 
-	if desired.length_squared() > 0.001:
-		velocity = velocity.move_toward(desired, ACCELERATION * delta)
-	else:
-		velocity = velocity.move_toward(Vector3.ZERO, FRICTION * delta)
-	velocity.y = 0.0
+	if input_enabled and not auto_enabled and Input.is_action_just_pressed("jump"):
+		_tocou_no_espaco()
 
-	move_and_slide()
-	_atualizar_altura(delta)
+	if desired.length_squared() > 0.001:
+		velocity.x = move_toward(velocity.x, desired.x, ACCELERATION * delta)
+		velocity.z = move_toward(velocity.z, desired.z, ACCELERATION * delta)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, FRICTION * delta)
+		velocity.z = move_toward(velocity.z, 0.0, FRICTION * delta)
+
+	# Três estados verticais e só um vale por quadro. Ficarem separados é o que
+	# impede o pulo de brigar com o voo: quem está voando não tem gravidade, e
+	# quem está no chão tem o y cravado em zero como sempre teve.
+	if voando:
+		velocity.y = 0.0
+		move_and_slide()
+		_atualizar_altura(delta)
+	elif _jumping:
+		velocity.y -= JUMP_GRAVITY * delta
+		move_and_slide()
+		# O chão é a colisão no y=0; encostou, aterrissa e entrega o controle do
+		# eixo vertical de volta (importante: o voo não prende o piso).
+		if global_position.y <= 0.001:
+			global_position.y = 0.0
+			velocity.y = 0.0
+			_jumping = false
+			AudioManager.tocar(&"pouso")
+	else:
+		velocity.y = 0.0
+		move_and_slide()
+		global_position.y = 0.0
 
 	_update_facing(delta)
 	_update_avatar(running)
 	if avatar != null:
 		avatar.definir_voo(voando, delta)
+	_update_steps(running, delta)
 	_report_position()
 
 
+## Espaço é uma tecla só para duas coisas, e quem separa é o tempo entre os
+## toques: o primeiro pula, e um segundo logo em seguida decola.
+##
+## O pulo sai na hora, sem esperar para ver se vem o segundo toque. Esperar
+## deixaria o salto com um atraso de 0,3 s, e salto com atraso parece jogo
+## travando. Em troca, a decolagem corta a parábola no meio — que é justamente
+## como um pulo que vira voo deveria parecer.
+func _tocou_no_espaco() -> void:
+	var agora := Time.get_ticks_msec() / 1000.0
+	var duplo := agora - _ultimo_toque_de_voo < JANELA_DUPLO_TOQUE
+	_ultimo_toque_de_voo = agora
+
+	if duplo:
+		# Consome o par: sem isto, um terceiro toque logo em seguida faria par
+		# com o segundo e desfaria a decolagem que acabou de acontecer.
+		_ultimo_toque_de_voo = -10.0
+		alternar_voo()
+		return
+	if voando:
+		# Voando, segurar o espaço sobe (ver `_atualizar_altura`). Só o toque
+		# duplo muda de estado.
+		return
+	if not _jumping and _on_ground():
+		_jumping = true
+		velocity.y = JUMP_SPEED
+		AudioManager.tocar(&"salto")
+
+
+func _on_ground() -> bool:
+	return global_position.y <= 0.001
+
+
 ## O mundo e plano e todo o resto anda em y = 0; o voo e a unica coisa que tira
-## o personagem desse plano, entao a altura vive aqui e em mais lugar nenhum.
+## o personagem desse plano de forma duradoura, entao a altura vive aqui e em
+## mais lugar nenhum. (O pulo tambem sai do plano, mas volta sozinho.)
 func _atualizar_altura(delta: float) -> void:
 	if not voando:
 		global_position.y = 0.0
 		return
 
 	if input_enabled:
-		if Input.is_action_pressed("voar"):
+		if Input.is_action_pressed("jump"):
 			_altura_alvo += VELOCIDADE_VERTICAL * delta
 		if Input.is_action_pressed("descer"):
 			_altura_alvo -= VELOCIDADE_VERTICAL * delta
@@ -198,6 +270,10 @@ func alternar_voo() -> void:
 		_altura_alvo = 0.0
 		return
 	voando = true
+	# Decolou no meio de um pulo: a parabola morre aqui, senao a gravidade do
+	# salto continuaria puxando contra a altura de voo no quadro seguinte.
+	_jumping = false
+	velocity.y = 0.0
 	_altura_alvo = ALTURA_DE_DECOLAGEM
 	AudioManager.tocar(&"ui_alternar")
 
@@ -208,6 +284,24 @@ func pousar() -> void:
 	voando = false
 	_altura_alvo = 0.0
 	global_position.y = 0.0
+	# Chegando do voo, o contador de passos comeca do zero: senao o primeiro
+	# passo depois de pousar sai imediatamente, por causa da distancia voada.
+	_step_distance = 0.0
+
+
+func _update_steps(running: bool, delta: float) -> void:
+	# Sem passo no ar, seja pulando ou voando — nao ha chao para pisar.
+	if _jumping or voando:
+		return
+	var planar := Vector2(velocity.x, velocity.z)
+	var andou := planar.length() * delta
+	if andou < 0.001:
+		return
+	_step_distance += andou
+	if _step_distance < (STEP_RUN if running else STEP_WALK):
+		return
+	_step_distance = 0.0
+	AudioManager.tocar(&"passo_cor" if running else &"passo")
 
 
 func _update_facing(delta: float) -> void:
@@ -238,16 +332,6 @@ func _report_position() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
-		return
-
-	if event.is_action_pressed("voar"):
-		var agora := Time.get_ticks_msec() / 1000.0
-		if agora - _ultimo_toque_de_voo <= JANELA_DUPLO_TOQUE:
-			_ultimo_toque_de_voo = -10.0   # consome o par, senao o 3o toque conta
-			get_viewport().set_input_as_handled()
-			alternar_voo()
-		else:
-			_ultimo_toque_de_voo = agora
 		return
 
 	if not event.is_action_pressed("interact"):

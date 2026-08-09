@@ -37,7 +37,10 @@ Não há nada para compilar nem dependência para baixar.
 | --- | --- |
 | `W A S D` / setas | Andar |
 | `Shift` | Correr |
-| `E` / `Espaço` / `Enter` | Interagir (NPCs, acampamentos, portões) e avançar diálogo |
+| `E` / `Enter` | Interagir (NPCs, acampamentos, portões) e avançar diálogo |
+| `Espaço` | Pular |
+| `Espaço` ×2 | Levantar voo; voando, segurar sobe |
+| `Ctrl` | Voando, descer (chegou ao chão, pousa) |
 | `Esc` | Menu de pausa / fechar diálogo |
 | `F5` | Salvamento rápido |
 | `F1` | Menu de debug (**só em build de debug**) |

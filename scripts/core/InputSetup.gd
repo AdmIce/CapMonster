@@ -14,12 +14,17 @@ const DEFAULT_BINDINGS := {
 	# Enter saiu de "interact" quando o chat entrou: é a tecla de abrir a caixa de
 	# conversa em todo jogo online, e deixar as duas coisas na mesma tecla fazia
 	# mandar mensagem interagir com o NPC atrás de você.
-	# Espaco saiu de "interact" quando o voo entrou: dois toques nele levantam
-	# voo, e um toque nao pode conversar com o NPC atras de voce ao mesmo tempo.
-	# O aviso na tela sempre disse "E", entao nada muda para quem joga.
+	#
+	# O mesmo raciocínio tirou o Espaço de "interact": agora ele pula, e
+	# interagir ficou só no E. Dividir evitava pular enquanto tentava abrir uma
+	# porta.
 	"interact": [KEY_E],
+	# Um toque pula, dois seguidos levantam voo. **Uma ação só** para as duas
+	# coisas, de propósito: com `jump` e `voar` no mesmo Espaço, cada toque
+	# disparava as duas e o personagem pulava toda vez que tentava decolar.
+	# Quem separa é o tempo entre os toques, no PlayerController.
+	"jump": [KEY_SPACE],
 	"cancel": [KEY_ESCAPE],
-	"voar": [KEY_SPACE],
 	"descer": [KEY_CTRL],
 	"chat": [KEY_ENTER, KEY_KP_ENTER],
 	"chat_comando": [KEY_SLASH],
