@@ -7,6 +7,7 @@ var _settings_overlay: Control = null
 ## Node, não Control: o painel de online é um CanvasLayer, para ficar por cima
 ## do vídeo de fundo sem entrar no layout da coluna.
 var _online_overlay: Node = null
+var _update_overlay: Node = null
 
 
 func _ready() -> void:
@@ -90,6 +91,7 @@ func _build() -> void:
 	right.add_child(quit)
 
 	_refresh_save_state(save_info)
+	_procurar_atualizacao()
 
 	var version := Design.caption(
 		"v%s  ·  protótipo" % ProjectSettings.get_setting("application/config/version", "0.0.0"),
@@ -151,6 +153,21 @@ func _confirm_overwrite() -> void:
 		SceneFlow.goto_character_creation()
 	)
 	dialog.popup_centered()
+
+
+## O menu principal e o unico lugar onde parar tudo para atualizar nao custa
+## nada: nao ha partida em andamento nem progresso por salvar.
+func _procurar_atualizacao() -> void:
+	Atualizador.verificacao_terminou.connect(_ao_verificar, CONNECT_ONE_SHOT)
+	Atualizador.verificar()
+
+
+func _ao_verificar(disponivel: bool, info: Dictionary) -> void:
+	if not disponivel or not is_inside_tree():
+		return
+	if _update_overlay != null and is_instance_valid(_update_overlay):
+		return
+	_update_overlay = UpdatePanel.mostrar(self, info)
 
 
 func _on_online() -> void:
