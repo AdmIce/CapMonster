@@ -7,6 +7,10 @@
 /build/
 /export/
 
+# Arte de origem que ainda nao tem licenca resolvida. O repositorio e publico:
+# o que entra aqui fica visivel para qualquer um e sobra no historico.
+/npc/
+
 # Logs
 *.log
 
