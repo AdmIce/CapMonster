@@ -374,10 +374,10 @@ func usar_item(item_id: String) -> bool:
 			var alvo := _aliado_mais_ferido(null)
 			if alvo == null:
 				return false
-			dados.consume_item(item_id)
+			Ficha.pedir("usar_item", {"item": item_id})
 			_aplicar_cura(alvo, valor)
 		"heal_team_percent":
-			dados.consume_item(item_id)
+			Ficha.pedir("usar_item", {"item": item_id})
 			for ator in _aliados:
 				if ator.esta_vivo():
 					_aplicar_cura(ator, valor)

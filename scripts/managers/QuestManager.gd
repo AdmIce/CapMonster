@@ -191,12 +191,12 @@ func _concluir(quest_id: String, missao: Dictionary) -> void:
 	var recompensas: Dictionary = missao.get("rewards", {})
 	var ouro := int(recompensas.get("gold", 0))
 	var xp := int(recompensas.get("player_xp", 0))
-	if ouro > 0:
-		dados.add_gold(ouro)
-	if xp > 0:
-		dados.grant_xp(xp)
+	# Pela Ficha, e nao direto: num cliente, mexer no ouro local faz o proximo
+	# estado que vier do servidor apagar o premio sem ninguem perceber.
+	var itens_do_premio: Dictionary = {}
 	for item_id in recompensas.get("items", {}).keys():
-		dados.add_item(String(item_id), int(recompensas["items"][item_id]))
+		itens_do_premio[String(item_id)] = int(recompensas["items"][item_id])
+	Ficha.pedir("recompensa", {"ouro": ouro, "xp": xp, "itens": itens_do_premio})
 
 	var partes: Array[String] = []
 	if ouro > 0:

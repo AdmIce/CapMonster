@@ -61,17 +61,17 @@ func processar_retorno(dados: PlayerData) -> Dictionary:
 		if rng.randf() < curva.idle_material_chance_per_hour:
 			material_qtd += rng.randi_range(1, 3)
 
-	if ouro > 0:
-		dados.add_gold(ouro)
-	if xp_treinador > 0:
-		dados.grant_xp(xp_treinador)
+	# Ouro, XP e material passam pela Ficha; o XP das criaturas continua local
+	# porque a colecao inteira ja viaja no estado que o servidor devolve.
+	var premio: Dictionary = {"ouro": ouro, "xp": xp_treinador}
+	if material_qtd > 0:
+		premio["itens"] = {material_id: material_qtd}
+	Ficha.pedir("recompensa", premio)
 
 	var subiram: Array[String] = []
 	for criatura in dados.team():
 		if criatura.grant_xp(xp_criatura) > 0:
 			subiram.append("%s Nv.%d" % [criatura.display_name(), criatura.level])
-	if material_qtd > 0:
-		dados.add_item(material_id, material_qtd)
 
 	ultimo_resumo = {
 		"segundos": decorridos,
