@@ -21,7 +21,10 @@ const VELOCIDADE_GIRO := 9.0
 
 var criatura: CreatureData = null
 
-var _player: PlayerController = null
+## Node3D e nao PlayerController: o companheiro so le posicao e rotacao de quem
+## segue, e assim o mesmo codigo serve para o mascote de outro jogador. Um
+## segundo companheiro so para o remoto seria duas logicas para dessincronizar.
+var _player: Node3D = null
 var _modelo: Node3D = null
 var _animador: CreatureAnimator = null
 var _fase: float = 0.0
@@ -37,7 +40,7 @@ func _ready() -> void:
 	add_to_group("companion")
 
 
-func seguir(player: PlayerController) -> void:
+func seguir(player: Node3D) -> void:
 	_player = player
 	if player != null:
 		global_position = _posicao_desejada()

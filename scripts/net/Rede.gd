@@ -156,6 +156,13 @@ func _meu_cartao() -> Dictionary:
 	var dados := GameManager.player
 	if dados == null:
 		return {"nome": "Treinador", "aparencia": {}, "mapa": "", "pos": Vector2.ZERO, "giro": 0.0, "correndo": false}
+	# A criatura lider vai junto: sem isso o mascote de outro jogador nao existe
+	# na sua tela, e metade do jogo e andar com ele do lado.
+	var lider: Dictionary = {}
+	var equipe := dados.team()
+	if not equipe.is_empty():
+		lider = {"especie": String(equipe[0].species_id), "nivel": equipe[0].level}
+
 	return {
 		"nome": dados.display_name,
 		"aparencia": dados.appearance,
@@ -163,6 +170,7 @@ func _meu_cartao() -> Dictionary:
 		"pos": dados.last_position,
 		"giro": 0.0,
 		"correndo": false,
+		"lider": lider,
 	}
 
 
@@ -179,6 +187,10 @@ func _apresentar(cartao: Dictionary) -> void:
 	var novo := not jogadores.has(id)
 	jogadores[id] = _higienizar(cartao)
 	if not novo:
+		# Cartão atualizado de alguém que já conhecemos (ele entrou no mundo e
+		# finalmente tem nome e aparência). `jogador_moveu` é o caminho que o
+		# boneco já escuta, então reaproveitá-lo aplica a troca na hora.
+		jogador_moveu.emit(id, jogadores[id])
 		return
 	GameLog.info(GameLog.Channel.SYSTEM, "Rede: %s (peer %d) está online." % [jogadores[id]["nome"], id])
 	if not GameManager.modo_servidor:
@@ -191,9 +203,11 @@ func _apresentar(cartao: Dictionary) -> void:
 ## coisa, e um valor errado aqui vira crash no construtor do avatar.
 func _higienizar(cartao: Dictionary) -> Dictionary:
 	var pos: Vector2 = cartao.get("pos", Vector2.ZERO)
+	var lider: Variant = cartao.get("lider", {})
 	return {
 		"nome": String(cartao.get("nome", "Treinador")).substr(0, 24),
 		"aparencia": cartao.get("aparencia", {}) if cartao.get("aparencia", {}) is Dictionary else {},
+		"lider": lider if lider is Dictionary else {},
 		"mapa": String(cartao.get("mapa", "")),
 		"pos": pos if pos is Vector2 else Vector2.ZERO,
 		"giro": clampf(float(cartao.get("giro", 0.0)), -TAU, TAU),
@@ -240,6 +254,33 @@ func _mover(pos: Vector2, giro: float, correndo: bool, mapa: String) -> void:
 	info["correndo"] = correndo
 	info["mapa"] = mapa
 	jogador_moveu.emit(id, info)
+
+
+## Reenvia o meu cartão para todo mundo.
+##
+## Precisa existir porque quase sempre a conexão acontece **no menu**, antes de
+## haver sessão: naquele instante `GameManager.player` é nulo, e o cartão sai com
+## nome e aparência vazios. Aparência vazia é índice zero, ou seja, o primeiro
+## personagem da lista — foi por isso que todo mundo aparecia como Cavaleiro
+## chamado "Treinador" para os outros, e certo para si mesmo.
+##
+## O mundo chama isto ao terminar de carregar, quando o personagem já existe.
+func atualizar_cartao() -> void:
+	if not online() or GameManager.player == null:
+		return
+
+	var cartao := _meu_cartao()
+	# Posição e giro atuais mandam sobre os do cartão novo: o jogador pode já ter
+	# andado, e reenviar a posição de entrada faria ele piscar de volta.
+	var atual: Dictionary = jogadores.get(meu_id(), {})
+	if atual.has("pos"):
+		cartao["pos"] = atual["pos"]
+		cartao["giro"] = atual.get("giro", 0.0)
+	jogadores[meu_id()] = cartao
+
+	if not multiplayer.get_peers().is_empty():
+		_apresentar.rpc(cartao)
+	estado_mudou.emit()
 
 
 ## Todos menos eu, filtrados pelo mapa em que estou. Quem está em outro mapa

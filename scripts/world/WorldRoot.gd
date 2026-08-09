@@ -182,6 +182,13 @@ func _resolve_spawn_position() -> Vector2:
 func _build_presenca() -> void:
 	presenca = PresencaOnline.criar(map_id, player)
 	add_child(presenca)
+
+	# Agora sim existe personagem. Quem conectou pelo menu se anunciou sem nome
+	# nem aparência (não havia sessão ainda) e apareceu como o boneco padrão para
+	# os outros; estas duas linhas corrigem o cartão e entregam a ficha.
+	Rede.atualizar_cartao()
+	Ficha.entrar_no_mundo()
+
 	_rede_de_teste()
 	_modelo_de_teste()
 

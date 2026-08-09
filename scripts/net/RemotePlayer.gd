@@ -34,6 +34,9 @@ var id_do_peer: int = 0
 
 var _avatar: PlayerAvatar = null
 var _etiqueta: Label3D = null
+var _companheiro: CompanionCreature = null
+## Espécie do mascote já montado, para não reconstruir a cada pacote.
+var _especie_do_mascote: String = ""
 var _alvo := Vector2.ZERO
 var _giro_alvo: float = 0.0
 var _correndo: bool = false
@@ -78,6 +81,46 @@ func aplicar(info: Dictionary) -> void:
 		_etiqueta.text = String(info.get("nome", "?"))
 	if _avatar != null and info.has("aparencia"):
 		_avatar.apply_appearance(info["aparencia"])
+	_atualizar_mascote(info.get("lider", {}))
+
+
+## O mascote do outro jogador.
+##
+## Reaproveita o `CompanionCreature` inteiro — é o mesmo comportamento de andar
+## atrás, correr para alcançar e reaparecer quando fica longe. Fazer um segundo
+## companheiro "só para o remoto" seria duas lógicas para dessincronizar.
+##
+## Ele entra como irmão deste nó, não como filho: o companheiro se move sozinho,
+## e pendurado aqui ele seria arrastado junto e nunca ficaria para trás.
+func _atualizar_mascote(lider: Variant) -> void:
+	var dados: Dictionary = lider if lider is Dictionary else {}
+	var especie := String(dados.get("especie", ""))
+	if especie == _especie_do_mascote:
+		return
+	_especie_do_mascote = especie
+
+	if especie == "" or not DataManager.has_species(StringName(especie)):
+		if _companheiro != null and is_instance_valid(_companheiro):
+			_companheiro.queue_free()
+			_companheiro = null
+		return
+
+	if _companheiro == null or not is_instance_valid(_companheiro):
+		_companheiro = CompanionCreature.new()
+		_companheiro.name = "MascoteDe_%d" % id_do_peer
+		get_parent().add_child(_companheiro)
+		_companheiro.seguir(self)
+
+	_companheiro.definir_criatura(
+		CreatureFactory.create(StringName(especie), maxi(1, int(dados.get("nivel", 1))))
+	)
+
+
+func _exit_tree() -> void:
+	# O mascote é irmão, então sair de cena não o leva junto.
+	if _companheiro != null and is_instance_valid(_companheiro):
+		_companheiro.queue_free()
+		_companheiro = null
 
 
 func _process(delta: float) -> void:
