@@ -4,6 +4,30 @@ O CapMonster roda sem cliente: o mundo existe, as criaturas nascem e circulam, e
 as fichas dos jogadores ficam guardadas ali, mesmo com ninguém conectado. É o
 que separa "jogar na casa de alguém" de "um mundo que está sempre no ar".
 
+## Do que ele precisa
+
+Medido com o mundo de pé, em regime (não no arranque, que consome mais):
+
+| Recurso   | Consumo real         | O que contratar        |
+|-----------|----------------------|------------------------|
+| RAM       | 142 MB               | 1 GB sobra             |
+| CPU       | 4,5% de um núcleo    | 1 vCPU                 |
+| Disco     | 74 MB o binário      | qualquer coisa (10 GB) |
+| Banda     | ~15 KB/s com 4 jogadores | qualquer franquia  |
+
+Ou seja: **o VPS mais barato que existir serve**. 1 vCPU e 1 GB, Ubuntu 22.04 ou
+24.04. Não precisa de placa de vídeo — o servidor roda `--headless` e nem abre
+janela.
+
+A conta da banda: cada jogador manda a posição 15 vezes por segundo, uns 80
+bytes com o cabeçalho, e o servidor repassa para os outros. Com quatro pessoas
+conectadas o dia inteiro isso dá algo como 40 GB por mês, dentro da franquia de
+qualquer plano.
+
+O servidor roda a 30 quadros por segundo de propósito (`SERVIDOR_QUADROS` no
+`Boot.gd`): ele não desenha nada e as posições viajam a 15 Hz, então 60 seria
+queimar CPU à toa. A 60 o consumo era quatro vezes maior.
+
 ## Subir
 
 ```bash

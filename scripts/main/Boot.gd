@@ -5,6 +5,9 @@ extends Control
 
 const MINIMUM_SPLASH_SECONDS := 0.9
 
+## Quadros por segundo do servidor dedicado.
+const SERVIDOR_QUADROS := 30
+
 ## Carregado por caminho, não por class_name: assim funciona mesmo com o editor
 ## ainda sem ter reindexado as classes.
 const SNAPSHOT_SCRIPT := preload("res://scripts/core/Snapshot.gd")
@@ -148,6 +151,13 @@ func _subir_servidor() -> void:
 		GameLog.error(GameLog.Channel.SYSTEM, "Servidor: mapa '%s' não existe." % mapa)
 		get_tree().quit(1)
 		return
+
+	# O servidor não desenha nada, então rodar o mundo a 60 Hz é queimar CPU à
+	# toa: as posições viajam a 15 Hz e as criaturas andam devagar. A 30 Hz o
+	# consumo cai pela metade, o que num VPS de um núcleo é a diferença entre
+	# ocupá-lo e não sentir.
+	Engine.max_fps = SERVIDOR_QUADROS
+	Engine.physics_ticks_per_second = SERVIDOR_QUADROS
 
 	GameManager.modo_servidor = true
 	GameManager.new_game("Servidor", {})
