@@ -16,6 +16,17 @@ const SAVE_VERSION := 1
 const TEAM_SIZE := 3
 
 var display_name: String = "Treinador"
+
+## Identidade do jogador, sorteada uma vez e guardada no save.
+##
+## O servidor guarda a ficha de cada um por **isto**, e nao pelo nome. Guardar
+## por nome parece obvio e quebra na primeira partida de verdade: todo mundo
+## comeca como "Treinador", entao dois amigos entravam no mesmo mundo e
+## dividiam o mesmo personagem - aparencia de um aparecia no outro, e o ouro era
+## o mesmo saldo para os dois.
+##
+## Trocar o nome no jogo nao muda a identidade: o nome e enfeite, isto e cadastro.
+var jogador_id: String = ""
 ## Keys: body, hair, hair_color, skin, outfit. Values are indices into the
 ## presets in CharacterCreation / PlayerAvatar.
 var appearance: Dictionary = {
@@ -55,6 +66,7 @@ var starter_species: String = ""
 
 
 func _init() -> void:
+	jogador_id = _sortear_id()
 	created_at_unix = int(Time.get_unix_time_from_system())
 	last_seen_unix = created_at_unix
 
@@ -305,6 +317,7 @@ func to_dict() -> Dictionary:
 	return {
 		"v": SAVE_VERSION,
 		"name": display_name,
+		"jogador_id": jogador_id,
 		"appearance": appearance.duplicate(),
 		"level": level,
 		"xp": xp,
@@ -346,8 +359,9 @@ func sincronizar(source: Dictionary) -> void:
 	var mudou_nivel := level != outro.level
 	var inventario_antigo := inventory.duplicate()
 
-	display_name = outro.display_name
-	appearance = outro.appearance
+	# Nome e aparencia **nao** vem do servidor: eles sao do jogador, nao do mundo.
+	# Sobrescrever aqui fazia o personagem trocar de cara ao entrar numa partida,
+	# e nao ha nada a ganhar trapaceando com a propria roupa.
 	level = outro.level
 	xp = outro.xp
 	gold = outro.gold
@@ -384,6 +398,11 @@ func sincronizar(source: Dictionary) -> void:
 static func from_dict(source: Dictionary) -> PlayerData:
 	var data := PlayerData.new()
 	data.display_name = source.get("name", "Treinador")
+	# Save antigo nao tem identidade: sorteia uma agora, senao este jogador
+	# continuaria dividindo ficha com todo mundo que se chama igual.
+	data.jogador_id = String(source.get("jogador_id", ""))
+	if data.jogador_id == "":
+		data.jogador_id = _sortear_id()
 	data.appearance = (source.get("appearance", {}) as Dictionary).duplicate()
 	data.level = maxi(1, int(source.get("level", 1)))
 	data.xp = int(source.get("xp", 0))
@@ -423,3 +442,11 @@ static func from_dict(source: Dictionary) -> PlayerData:
 	data.playtime_seconds = float(source.get("playtime", 0.0))
 	data.starter_species = source.get("starter", "")
 	return data
+
+
+## Identificador aleatorio de 16 digitos hexadecimais. Nao precisa ser seguro,
+## so precisa nao colidir entre os amigos de alguem.
+static func _sortear_id() -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	return "%08x%08x" % [rng.randi(), rng.randi()]

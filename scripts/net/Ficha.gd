@@ -12,9 +12,18 @@ extends Node
 ## resultado.
 ##
 ## **A ficha mora no servidor.** Quando você entra no mundo de alguém, o seu
-## personagem daquele mundo fica guardado lá, em `user://mundo/<nome>.json` —
-## como num servidor privado de qualquer jogo online. O seu save de um jogador só
+## personagem daquele mundo fica guardado lá, em `user://mundo/<id>.json` — como
+## num servidor privado de qualquer jogo online. O seu save de um jogador só
 ## continua sendo seu e separado; são dois personagens, e isso é de propósito.
+##
+## O arquivo é nomeado pelo `jogador_id`, e **não** pelo nome. Guardar por nome
+## parecia óbvio e quebrou na primeira partida de verdade: todo mundo começa
+## como "Treinador", então dois amigos entravam no mesmo mundo e dividiam o mesmo
+## personagem — a aparência de um aparecia no outro e o ouro era o mesmo saldo.
+##
+## Nome e aparência são do jogador, não do mundo: o servidor os recebe do cliente
+## a cada visita e nunca os devolve por cima. Não há o que ganhar trapaceando com
+## a própria roupa, e sobrescrever fazia o personagem trocar de cara ao entrar.
 ##
 ## A intenção é genérica (`pedir(acao, argumentos)`) em vez de um RPC por ação
 ## porque a lista de ações vai crescer, e uma porta só é uma porta só para
@@ -193,7 +202,15 @@ func apresentar_personagem(nome: String, inicial: Dictionary) -> void:
 	if limpo == "":
 		limpo = "Treinador"
 
-	var ficha := _carregar(limpo)
+	# A busca é pela identidade, nunca pelo nome: todo mundo comeca como
+	# "Treinador", e guardar por nome fazia dois amigos dividirem o mesmo
+	# personagem no mesmo mundo.
+	var identidade := String(inicial.get("jogador_id", "")).strip_edges()
+	if identidade == "":
+		GameLog.warn(GameLog.Channel.SYSTEM, "Ficha: cliente sem identidade; recusado.")
+		return
+
+	var ficha := _carregar(identidade)
 	if ficha == null:
 		# Primeira visita: o mundo ainda não conhece este personagem, então
 		# aceita o que o jogador trouxe. Daqui para frente quem manda é o
@@ -201,10 +218,15 @@ func apresentar_personagem(nome: String, inicial: Dictionary) -> void:
 		ficha = PlayerData.from_dict(inicial)
 		GameLog.info(GameLog.Channel.SYSTEM, "Ficha: '%s' entrou pela primeira vez neste mundo." % limpo)
 	else:
+		# Nome e aparência são do jogador, não do mundo: ele pode ter trocado de
+		# roupa desde a última visita, e isso vale.
+		ficha.display_name = limpo
+		ficha.appearance = (inicial.get("appearance", {}) as Dictionary).duplicate()
 		GameLog.info(GameLog.Channel.SYSTEM, "Ficha: '%s' voltou (nível %d)." % [limpo, ficha.level])
 
+	ficha.jogador_id = identidade
 	_fichas[peer] = ficha
-	_nomes[peer] = limpo
+	_nomes[peer] = identidade
 	_gravar(peer)
 	_sincronizar.rpc_id(peer, ficha.to_dict())
 
@@ -243,20 +265,20 @@ func _ao_sair(peer: int) -> void:
 
 func _gravar(peer: int) -> void:
 	var ficha: PlayerData = _fichas.get(peer, null)
-	var nome := String(_nomes.get(peer, ""))
-	if ficha == null or nome == "":
+	var identidade := String(_nomes.get(peer, ""))
+	if ficha == null or identidade == "":
 		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(PASTA_MUNDO))
-	var arquivo := FileAccess.open(_caminho(nome), FileAccess.WRITE)
+	var arquivo := FileAccess.open(_caminho(identidade), FileAccess.WRITE)
 	if arquivo == null:
-		GameLog.error(GameLog.Channel.SYSTEM, "Ficha: não consegui gravar '%s'." % nome)
+		GameLog.error(GameLog.Channel.SYSTEM, "Ficha: não consegui gravar '%s'." % identidade)
 		return
 	arquivo.store_string(JSON.stringify(ficha.to_dict(), "\t"))
 	arquivo.close()
 
 
-func _carregar(nome: String) -> PlayerData:
-	var caminho := _caminho(nome)
+func _carregar(identidade: String) -> PlayerData:
+	var caminho := _caminho(identidade)
 	if not FileAccess.file_exists(caminho):
 		return null
 	var arquivo := FileAccess.open(caminho, FileAccess.READ)
@@ -270,6 +292,7 @@ func _carregar(nome: String) -> PlayerData:
 	return PlayerData.from_dict(dados)
 
 
-static func _caminho(nome: String) -> String:
-	# `validate_filename` para um nome com barra não virar caminho de pasta.
-	return PASTA_MUNDO + nome.validate_filename() + ".json"
+static func _caminho(identidade: String) -> String:
+	# `validate_filename` para uma identidade adulterada não virar caminho de
+	# pasta e escrever fora de `user://mundo/`.
+	return PASTA_MUNDO + identidade.validate_filename() + ".json"
