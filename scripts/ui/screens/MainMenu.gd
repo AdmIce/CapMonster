@@ -13,7 +13,11 @@ var _botoes_de_jogo: Array[Button] = []
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# `set_anchors_and_offsets_preset`, e nao `set_anchors_preset`: o segundo
+	# **preserva o retangulo atual** ajustando os offsets. Chamado aqui, com o no
+	# ja na arvore e ainda com tamanho zero, ele grava o zero para sempre -- foi
+	# o que deixou o painel de configuracoes encolhido no canto da tela.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Design.screen_root(self)
 	_build()
 

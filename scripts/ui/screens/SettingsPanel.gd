@@ -8,9 +8,19 @@ signal closed()
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# `set_anchors_and_offsets_preset`, e nao `set_anchors_preset`: o segundo
+	# **preserva o retangulo atual** ajustando os offsets. Chamado aqui, com o no
+	# ja na arvore e ainda com tamanho zero, ele grava o zero para sempre -- foi
+	# o que deixou o painel de configuracoes encolhido no canto da tela.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+
+
+## Largura de uma coluna de opções. Duas cabem lado a lado a partir de uma
+## janela de ~1100; abaixo disso elas empilham.
+const LARGURA_COLUNA := 340.0
+const LARGURA_DUAS_COLUNAS := 1100.0
 
 
 func _build() -> void:
@@ -23,15 +33,59 @@ func _build() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
+	var duas := Responsivo.tela(self).x >= LARGURA_DUAS_COLUNAS
+
 	var card := Design.panel(Design.SURFACE)
-	Responsivo.largura(card, 420, 0.5)
+	# Altura limitada de propósito. Antes o painel só crescia, e bastou entrar a
+	# seção de câmera para o botão "Fechar" sair pela borda de baixo da tela --
+	# sem rolagem e sem jeito de alcançar. Agora o que passa disto rola.
+	Responsivo.caixa(
+		card,
+		Vector2(LARGURA_COLUNA * 2.0 + 64.0 if duas else LARGURA_COLUNA + 48.0, 620.0),
+		Vector2(0.94, 0.88)
+	)
 	center.add_child(card)
 
-	var column := Design.vbox(Design.S_LG)
-	card.add_child(column)
+	var moldura := Design.vbox(Design.S_MD)
+	card.add_child(moldura)
 
-	column.add_child(Design.heading("Configurações"))
-	column.add_child(Design.divider())
+	moldura.add_child(Design.heading("Configurações"))
+	moldura.add_child(Design.divider())
+
+	var conteudo: Control
+	if duas:
+		var lado_a_lado := Design.hbox(Design.S_LG)
+		lado_a_lado.add_child(_coluna_video())
+		lado_a_lado.add_child(_coluna_camera())
+		conteudo = lado_a_lado
+	else:
+		var empilhado := Design.vbox(Design.S_LG)
+		empilhado.add_child(_coluna_video())
+		empilhado.add_child(_coluna_camera())
+		conteudo = empilhado
+
+	moldura.add_child(Responsivo.rolagem(conteudo))
+
+	moldura.add_child(Design.divider())
+	# Fora da rolagem: o botão de sair não pode depender de o jogador descobrir
+	# que precisa rolar até o fim para achá-lo.
+	var close := Design.button("Fechar", "primary")
+	close.pressed.connect(_close)
+	moldura.add_child(close)
+
+
+## Título de seção. Existe para o painel ser lido como três assuntos e não como
+## uma lista de dezoito controles soltos.
+func _secao(texto: String) -> Label:
+	return Design.label(texto.to_upper(), Design.FS_LABEL, Design.GOLD)
+
+
+func _coluna_video() -> VBoxContainer:
+	var column := Design.vbox(Design.S_MD)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.custom_minimum_size = Vector2(LARGURA_COLUNA, 0)
+
+	column.add_child(_secao("Vídeo"))
 
 	var fullscreen := Design.check("Tela cheia", bool(SaveManager.get_setting("fullscreen", false)))
 	fullscreen.toggled.connect(func(on): SaveManager.set_setting("fullscreen", on))
@@ -45,17 +99,17 @@ func _build() -> void:
 	fps.toggled.connect(func(on): SaveManager.set_setting("show_fps", on))
 	column.add_child(fps)
 
-	column.add_child(Design.divider())
 	_montar_grafico(column)
-	column.add_child(Design.divider())
 
-	var escala_linha := Design.vbox(Design.S_XS)
+	column.add_child(Design.divider())
+	column.add_child(_secao("Interface"))
+
 	var escala_valor := Responsivo.escala_salva()
 	var escala_rotulo := Design.label(
 		"Tamanho da interface  %d%%" % int(round(escala_valor * 100.0)),
 		Design.FS_LABEL, Design.TEXT_MUTED
 	)
-	escala_linha.add_child(escala_rotulo)
+	column.add_child(escala_rotulo)
 
 	var escala := HSlider.new()
 	escala.min_value = Responsivo.ESCALA_MIN
@@ -70,13 +124,23 @@ func _build() -> void:
 		SaveManager.set_setting(Responsivo.CHAVE_ESCALA, valor)
 		Responsivo.aplicar_escala(self, valor)
 	)
-	escala_linha.add_child(escala)
-	column.add_child(escala_linha)
+	column.add_child(escala)
+	return column
 
-	var zoom_row := Design.vbox(Design.S_XS)
+
+func _coluna_camera() -> VBoxContainer:
+	var column := Design.vbox(Design.S_MD)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.custom_minimum_size = Vector2(LARGURA_COLUNA, 0)
+
+	column.add_child(_secao("Câmera"))
+	_montar_camera(column)
+
+	column.add_child(Design.divider())
+
 	var zoom_value := float(SaveManager.get_setting("camera_zoom", 1.0))
 	var zoom_label := Design.label("Zoom da câmera  %.2fx" % zoom_value, Design.FS_LABEL, Design.TEXT_MUTED)
-	zoom_row.add_child(zoom_label)
+	column.add_child(zoom_label)
 
 	var slider := HSlider.new()
 	slider.min_value = 0.7
@@ -89,17 +153,8 @@ func _build() -> void:
 		SaveManager.set_setting("camera_zoom", value)
 		_apply_camera_zoom(value)
 	)
-	zoom_row.add_child(slider)
-	column.add_child(zoom_row)
-
-	column.add_child(Design.divider())
-	_montar_camera(column)
-
-	column.add_child(Design.spacer(Design.S_SM))
-
-	var close := Design.button("Fechar", "primary")
-	close.pressed.connect(_close)
-	column.add_child(close)
+	column.add_child(slider)
+	return column
 
 
 ## Qualidade alta = Forward+ (Vulkan). Fica desligada por padrao porque nem toda
@@ -163,9 +218,10 @@ func _confirmar_grafico(caixa: CheckButton, aviso: Label, ligado: bool) -> void:
 ## quatro opções fixas, e ver as quatro de uma vez explica mais que abrir um
 ## menu para descobrir o que existe.
 func _montar_camera(column: VBoxContainer) -> void:
-	column.add_child(Design.label("Câmera", Design.FS_LABEL, Design.TEXT_MUTED))
-
 	var ajuda := Design.caption("")
+	# Sem quebra de linha a explicação some para fora da coluna, e a coluna toda
+	# estica atrás dela.
+	ajuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var sensibilidade_linha := _montar_sensibilidade()
 	var botoes := {}
 

@@ -52,10 +52,7 @@ func _build() -> void:
 	column.add_child(save)
 
 	var settings := Design.button("Configurações")
-	settings.pressed.connect(func():
-		var overlay := SettingsPanel.new()
-		_panel.add_child(overlay)
-	)
+	settings.pressed.connect(abrir_configuracoes)
 	column.add_child(settings)
 
 	column.add_child(Design.divider())
@@ -71,6 +68,15 @@ func _build() -> void:
 	var quit := Design.button("Sair do jogo", "danger")
 	quit.pressed.connect(func(): GameManager.quit_game())
 	column.add_child(quit)
+
+
+## Abre a pausa (se ainda não estiver) e o painel de configurações por cima.
+## Público para a ferramenta de captura conseguir fotografar o painel sem
+## precisar de dois cliques que ninguém pode dar num teste automático.
+func abrir_configuracoes() -> void:
+	if not _is_open:
+		open()
+	_panel.add_child(SettingsPanel.new())
 
 
 func toggle() -> void:

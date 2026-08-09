@@ -95,6 +95,8 @@ func _abrir_painel_de_teste() -> void:
 				inventory.mostrar_aba(InventoryPanel.Aba.MISSOES)
 			"mapa":
 				map_panel.abrir(map_data, player)
+			"config":
+				pause_menu.abrir_configuracoes()
 		return
 
 
