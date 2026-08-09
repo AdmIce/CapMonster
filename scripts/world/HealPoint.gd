@@ -52,7 +52,51 @@ func _build_visual() -> void:
 			break
 
 
-func _perform(_by: Node3D) -> void:
+## Quanto tempo o personagem fica sentado antes da cura sair. Curto de
+## proposito: descansar e um gesto, nao uma espera. Medido no modelo, descer e
+## levantar somam quase um segundo e meio -- com 1,2 sentado, a coisa toda dura
+## menos de tres segundos.
+const SEGUNDOS_SENTADO := 1.2
+
+
+func _perform(by: Node3D) -> void:
+	if GameManager.player == null:
+		return
+	_descansar(by)
+
+
+## Senta junto da fogueira, cura, levanta.
+##
+## A cura sai no fim, e nao no comeco: sentar depois de ja estar curado seria
+## enfeite. Se o personagem nao souber sentar (os Kenney nao sabem), a cura sai
+## na hora, como sempre saiu -- o descanso nunca depende da animacao existir.
+func _descansar(quem: Node3D) -> void:
+	var jogador := quem as PlayerController
+	if jogador == null or jogador.avatar == null or not jogador.avatar.sentar():
+		_curar()
+		return
+
+	# Sem isto da para sair andando sentado: o controlador continua lendo o
+	# teclado e o corpo desliza pelo chao na pose de sentado.
+	jogador.input_enabled = false
+	GameLog.info(GameLog.Channel.WORLD, "Sentou na fogueira de %s." % title)
+
+	await get_tree().create_timer(SEGUNDOS_SENTADO).timeout
+	# O jogador pode ter trocado de mapa ou fechado o jogo durante a espera, e
+	# ai tanto ele quanto este ponto de cura ja nao existem mais.
+	if not is_instance_valid(jogador) or not is_inside_tree():
+		return
+
+	_curar()
+	jogador.avatar.levantar()
+	GameLog.info(GameLog.Channel.WORLD, "Levantou.")
+
+	await get_tree().create_timer(0.9).timeout
+	if is_instance_valid(jogador):
+		jogador.input_enabled = true
+
+
+func _curar() -> void:
 	var player := GameManager.player
 	if player == null:
 		return

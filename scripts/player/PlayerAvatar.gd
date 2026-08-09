@@ -17,7 +17,7 @@ extends Node3D
 ##
 ## Sem o `.glb`, cai num boneco de primitivas: o jogo não quebra por falta de asset.
 
-enum State { IDLE, WALK, RUN, INTERACT }
+enum State { IDLE, WALK, RUN, INTERACT, SENTADO }
 
 const PASTA := "res://assets/models/characters/"
 const ALTURA_ALVO := 1.7
@@ -46,6 +46,14 @@ const ANIM_PARADO := "Idle"
 const ANIM_ANDANDO := "Walking_A"
 const ANIM_CORRENDO := "Running_A"
 const ANIM_INTERAGIR := "Interact"
+
+## Sentar no chao, em tres tempos: desce, fica, levanta. Os KayKit trazem os
+## tres; os Kenney so tem parado/correndo/pulo, e para eles `sentar()` devolve
+## false -- o descanso acontece igual, o personagem so nao senta. Fingir uma
+## pose com o modelo errado ficaria pior do que nao ter.
+const ANIM_SENTAR_DESCE := "Sit_Floor_Down"
+const ANIM_SENTADO := "Sit_Floor_Idle"
+const ANIM_SENTAR_LEVANTA := "Sit_Floor_StandUp"
 
 const PASTA_KENNEY := "res://3d/personagens/"
 
@@ -100,6 +108,11 @@ const ARMAS := [
 
 var _appearance: Dictionary = {}
 var _state: State = State.IDLE
+## Nome da animacao de passagem tocando agora (sentar/levantar). Enquanto tem
+## uma, o estado de locomocao nao manda na animacao -- senao o quadro seguinte
+## voltaria para "parado" e cortaria a descida pela metade.
+var _transicao: String = ""
+var _depois_da_transicao: String = ""
 var _speed_ratio: float = 0.0
 var _interact_timer: float = 0.0
 
@@ -515,6 +528,10 @@ func set_locomotion(speed_ratio: float, is_running: bool) -> void:
 	_speed_ratio = clampf(speed_ratio, 0.0, 1.0)
 	if _interact_timer > 0.0:
 		return
+	# Sentado nao anda. Sem isto, o primeiro quadro depois de sentar ja voltaria
+	# para "parado", porque o controlador continua reportando velocidade zero.
+	if _state == State.SENTADO:
+		return
 	if _speed_ratio < 0.05:
 		_state = State.IDLE
 	elif is_running:
@@ -546,6 +563,14 @@ func _process(delta: float) -> void:
 
 func _atualizar_animacao() -> void:
 	if _animador == null:
+		return
+	# Passagem em andamento (sentando ou levantando): quem manda e ela, ate
+	# terminar. `_ao_terminar_animacao` devolve o controle.
+	if _transicao != "":
+		return
+	if _state == State.SENTADO:
+		_tocar(ANIM_SENTADO)
+		_animador.speed_scale = 1.0
 		return
 	match _state:
 		State.RUN:
@@ -620,3 +645,60 @@ static func _cilindro(raio: float, altura: float) -> CylinderMesh:
 	mesh.height = altura
 	mesh.radial_segments = 10
 	return mesh
+
+
+# --- sentar -------------------------------------------------------------------
+
+## Este personagem sabe sentar? Os Kenney nao sabem, e quem chama precisa poder
+## seguir em frente sem a pose em vez de travar esperando uma animacao que nao
+## existe.
+func pode_sentar() -> bool:
+	return _animador != null and _animador.has_animation(ANIM_SENTADO)
+
+
+## Senta no chao. Devolve false quando o modelo nao tem a animacao.
+func sentar() -> bool:
+	if not pode_sentar():
+		return false
+	_state = State.SENTADO
+	_tocar_uma_vez(ANIM_SENTAR_DESCE, ANIM_SENTADO)
+	return true
+
+
+func levantar() -> void:
+	if _state != State.SENTADO:
+		return
+	_state = State.IDLE
+	_tocar_uma_vez(ANIM_SENTAR_LEVANTA, _anim_parado)
+
+
+## Toca uma animacao **uma vez** e emenda na seguinte quando ela acabar.
+##
+## O `_tocar` normal forca laco em tudo, o que serve para andar e parar mas
+## deixaria o personagem descendo para o chao eternamente.
+func _tocar_uma_vez(nome: String, depois: String) -> void:
+	if _animador == null or not _animador.has_animation(nome):
+		# Sem a animacao de passagem, vai direto para a pose final -- senta de
+		# um quadro para o outro, que e feio mas funciona.
+		_transicao = ""
+		_tocar(depois)
+		return
+
+	if not _animador.animation_finished.is_connected(_ao_terminar_animacao):
+		_animador.animation_finished.connect(_ao_terminar_animacao)
+
+	var animacao := _animador.get_animation(nome)
+	if animacao != null:
+		animacao.loop_mode = Animation.LOOP_NONE
+	_transicao = nome
+	_depois_da_transicao = depois
+	_animacao_atual = nome
+	_animador.speed_scale = 1.0
+	_animador.play(nome, 0.15)
+
+
+func _ao_terminar_animacao(nome: StringName) -> void:
+	if String(nome) != _transicao:
+		return
+	_transicao = ""
+	_tocar(_depois_da_transicao)

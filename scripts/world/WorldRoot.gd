@@ -97,7 +97,27 @@ func _abrir_painel_de_teste() -> void:
 				map_panel.abrir(map_data, player)
 			"config":
 				pause_menu.abrir_configuracoes()
+			"sentar":
+				player.sentar()
+			"descanso":
+				# Descansar exige andar ate a fogueira e apertar E, e um teste
+				# automatico nao faz nenhum dos dois.
+				var fogueira := _achar_descanso(self)
+				if fogueira != null:
+					fogueira.interact(player)
+				else:
+					GameLog.warn(GameLog.Channel.WORLD, "Teste: nenhum ponto de descanso neste mapa.")
 		return
+
+
+func _achar_descanso(no: Node) -> HealPoint:
+	if no is HealPoint:
+		return no as HealPoint
+	for filho in no.get_children():
+		var achado := _achar_descanso(filho)
+		if achado != null:
+			return achado
+	return null
 
 
 ## Só na primeira entrada da sessão: trocar de mapa não paga idle de novo.

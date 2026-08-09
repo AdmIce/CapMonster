@@ -46,6 +46,9 @@ var auto_enabled: bool = false
 var auto_input: Vector2 = Vector2.ZERO
 
 var voando: bool = false
+## Sentado de propria vontade (tecla Insert). O descanso na fogueira nao passa
+## por aqui: la quem senta e o HealPoint, com o controle desligado.
+var sentado: bool = false
 
 var _altura_alvo: float = 0.0
 var _ultimo_toque_de_voo: float = -10.0
@@ -165,6 +168,17 @@ func _physics_process(delta: float) -> void:
 			# terceira pessoa, porque a câmera gira junto com ele.
 			direcao = Vector3(auto_input.x, 0.0, auto_input.y).limit_length(1.0)
 			running = true
+
+	# Antes de virar velocidade: zerar a direcao depois de `desired` ja calculado
+	# deixaria o personagem escorregando pelo chao na pose de sentado.
+	if sentado:
+		# Qualquer tentativa de andar levanta. Descobrir sozinho que precisa
+		# apertar Insert de novo para voltar a se mexer seria uma armadilha.
+		if direcao.length_squared() > 0.01:
+			levantar()
+		else:
+			direcao = Vector3.ZERO
+			running = false
 
 	var target_speed := VELOCIDADE_VOO if voando else (RUN_SPEED if running else WALK_SPEED)
 	var desired := direcao * target_speed
@@ -344,6 +358,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
 
+	if event.is_action_pressed("sentar"):
+		get_viewport().set_input_as_handled()
+		if sentado:
+			levantar()
+		else:
+			sentar()
+		return
+
 	if not event.is_action_pressed("interact"):
 		return
 	if _current_target == null:
@@ -392,3 +414,26 @@ func current_interactable() -> Interactable:
 ## (for example a gate that just unlocked).
 func revalidate_target() -> void:
 	interaction_target_changed.emit(_current_target)
+
+
+# --- sentar -------------------------------------------------------------------
+
+## Senta onde estiver. Nao faz nada alem disso: quem descansa e a fogueira.
+func sentar() -> void:
+	if sentado or voando or avatar == null:
+		return
+	# Voando nao senta, e quem nao tem a animacao tambem nao: `avatar.sentar()`
+	# devolve false nos modelos sem a pose, e ai o estado nem muda -- senao o
+	# personagem ficaria travado em pe sem saber por que nao anda.
+	if not avatar.sentar():
+		return
+	sentado = true
+	velocity = Vector3.ZERO
+
+
+func levantar() -> void:
+	if not sentado:
+		return
+	sentado = false
+	if avatar != null:
+		avatar.levantar()

@@ -210,6 +210,21 @@ func _mapa_de_teste() -> void:
 		return
 
 
+## `-- --personagem=<indice>` troca o corpo antes de entrar no mundo. Serve para
+## conferir animacao que so existe em parte dos modelos -- os KayKit sabem
+## sentar, os Kenney nao -- sem depender de qual personagem estava salvo.
+func _personagem_de_teste() -> void:
+	for argumento in OS.get_cmdline_user_args():
+		if not argumento.begins_with("--personagem="):
+			continue
+		var indice := int(argumento.substr("--personagem=".length()))
+		var aparencia := GameManager.player.appearance.duplicate()
+		aparencia["body"] = indice
+		GameManager.player.appearance = aparencia
+		GameLog.info(GameLog.Channel.SYSTEM, "Teste: corpo %d." % indice)
+		return
+
+
 func _run_smoke_test() -> void:
 	GameLog.info(GameLog.Channel.SYSTEM, "Teste automático: entrando direto no mundo.")
 	if not GameManager.continue_game():
@@ -221,6 +236,7 @@ func _run_smoke_test() -> void:
 		GameManager.choose_starter((starters[0] as CreatureSpecies).id)
 	_conceder_criatura_de_teste()
 	_mapa_de_teste()
+	_personagem_de_teste()
 	GameManager.begin_session()
 	# Salvar aqui faz a segunda execução com --smoke cair no continue_game(),
 	# o que testa o ciclo salvar/carregar de graça.

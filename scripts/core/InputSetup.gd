@@ -30,6 +30,9 @@ const DEFAULT_BINDINGS := {
 	# Sem isto a HUD inteira (mochila, automático, chat) ficava inalcançável em
 	# primeira pessoa: o cursor sumia e não havia como clicar em nada.
 	"cursor": [KEY_ALT],
+	# Sentar onde estiver. E gesto, nao acao de jogo: nao cura, nao pausa, nao
+	# muda regra nenhuma -- so muda a pose.
+	"sentar": [KEY_INSERT],
 	"chat": [KEY_ENTER, KEY_KP_ENTER],
 	"chat_comando": [KEY_SLASH],
 	"inventory": [KEY_I, KEY_TAB],
