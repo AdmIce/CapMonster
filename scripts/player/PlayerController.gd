@@ -49,6 +49,18 @@ var voando: bool = false
 ## Sentado de propria vontade (tecla Insert). O descanso na fogueira nao passa
 ## por aqui: la quem senta e o HealPoint, com o controle desligado.
 var sentado: bool = false
+## Montado no cavalo (tecla F1).
+var montado: bool = false
+
+## --- montaria ------------------------------------------------------------------
+##
+## O cavalo entra como filho do jogador: segue posicao e giro de graca, e quem
+## colide continua sendo a capsula do jogador. Montado, o personagem so sobe
+## para a sela e troca de pose -- o controle e o mesmo de sempre.
+const VELOCIDADE_MONTADO := 12.5
+## Segundos para subir na sela. E o tempo da subida do corpo, nao um relogio
+## solto: a animacao de montar toca junto.
+const TEMPO_DE_MONTAR := 0.45
 
 var _altura_alvo: float = 0.0
 var _ultimo_toque_de_voo: float = -10.0
@@ -65,6 +77,10 @@ var _last_plane := Vector2.ZERO
 var _facing_angle: float = 0.0
 var _jumping := false
 var _step_distance := 0.0
+var montaria: Montaria = null
+## Altura em que o avatar esta agora, entre o chao (0) e a sela. Interpolada
+## para a subida nao ser um teleporte.
+var _altura_na_sela: float = 0.0
 
 
 func _ready() -> void:
@@ -181,6 +197,9 @@ func _physics_process(delta: float) -> void:
 			running = false
 
 	var target_speed := VELOCIDADE_VOO if voando else (RUN_SPEED if running else WALK_SPEED)
+	if montado and not voando:
+		# Cavalo nao tem "andar devagar": quem monta quer chegar antes.
+		target_speed = VELOCIDADE_MONTADO
 	var desired := direcao * target_speed
 
 	if input_enabled and not auto_enabled and Input.is_action_just_pressed("jump"):
@@ -215,6 +234,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		global_position.y = 0.0
 
+	_atualizar_montaria(delta)
 	_update_facing(delta)
 	_update_avatar(running)
 	if avatar != null:
@@ -358,6 +378,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
 
+	if event.is_action_pressed("montaria"):
+		get_viewport().set_input_as_handled()
+		alternar_montaria()
+		return
+
 	if event.is_action_pressed("sentar"):
 		get_viewport().set_input_as_handled()
 		if sentado:
@@ -437,3 +462,61 @@ func levantar() -> void:
 	sentado = false
 	if avatar != null:
 		avatar.levantar()
+
+
+# --- montaria -----------------------------------------------------------------
+
+func alternar_montaria() -> void:
+	if montado:
+		desmontar()
+	else:
+		montar()
+
+
+func montar() -> void:
+	if montado or voando:
+		return
+	# Sentado no chao e montar sao poses concorrentes; levanta antes.
+	if sentado:
+		levantar()
+
+	montaria = Montaria.criar()
+	add_child(montaria)
+	montado = true
+
+	if avatar != null:
+		avatar.montar()
+	AudioManager.tocar(&"ui_alternar")
+
+
+func desmontar() -> void:
+	if not montado:
+		return
+	montado = false
+	if montaria != null and is_instance_valid(montaria):
+		montaria.queue_free()
+	montaria = null
+	if avatar != null:
+		avatar.desmontar()
+	AudioManager.tocar(&"ui_alternar")
+
+
+## Sobe (ou desce) o avatar entre o chao e a sela, e diz ao cavalo se ele anda.
+##
+## A subida e interpolada de proposito: colocar o personagem na sela de um
+## quadro para o outro parece teleporte, e o cavalo aparece embaixo dele no
+## mesmo instante. Com a subida, a animacao de montar tem onde acontecer.
+func _atualizar_montaria(delta: float) -> void:
+	var alvo := 0.0
+	if montado and montaria != null and is_instance_valid(montaria):
+		alvo = montaria.altura_da_sela()
+		montaria.definir_movimento(Vector2(velocity.x, velocity.z).length())
+
+	if is_equal_approx(_altura_na_sela, alvo):
+		return
+	# A velocidade sai da altura da sela dividida pelo tempo de montar, para a
+	# subida durar o mesmo tempo em qualquer cavalo.
+	var passo := maxf(0.5, alvo if alvo > 0.0 else _altura_na_sela) / TEMPO_DE_MONTAR
+	_altura_na_sela = move_toward(_altura_na_sela, alvo, passo * delta)
+	if avatar != null:
+		avatar.position.y = _altura_na_sela

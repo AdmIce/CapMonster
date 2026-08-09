@@ -84,6 +84,9 @@ const ANIM_MODULAR := {
 	"sentar_desce": "Sitting_Enter",
 	"sentado": "Sitting_Idle",
 	"sentar_levanta": "Sitting_Exit",
+	# Pose de dirigir: sentado com as maos a frente. E a que mais se parece com
+	# alguem na sela; "sentar no chao" em cima do cavalo ficaria deitado.
+	"montado": "Driving",
 }
 
 ## Cabelos. O primeiro e "nenhum" de proposito: careca tem de ser uma escolha.
@@ -192,6 +195,10 @@ var _depois_da_transicao: String = ""
 var _anim_sentar_desce: String = ANIM_SENTAR_DESCE
 var _anim_sentado: String = ANIM_SENTADO
 var _anim_sentar_levanta: String = ANIM_SENTAR_LEVANTA
+## Pose de quem esta montado. Vazia nos kits que nao tem: ali o personagem
+## monta em pe, que e feio, mas e melhor do que uma pose de sentar no chao em
+## cima de um cavalo.
+var _anim_montado: String = ""
 var _speed_ratio: float = 0.0
 var _interact_timer: float = 0.0
 
@@ -257,9 +264,24 @@ func _relatar_altura() -> void:
 	if esqueleto == null:
 		return
 	var topo := -INF
+	var chao := INF
 	for i in esqueleto.get_bone_count():
-		topo = maxf(topo, (esqueleto.global_transform * esqueleto.get_bone_global_pose(i)).origin.y)
-	GameLog.verbose(GameLog.Channel.SYSTEM, "Altura montada: %.3f m (osso mais alto)." % topo)
+		var y: float = (esqueleto.global_transform * esqueleto.get_bone_global_pose(i)).origin.y
+		topo = maxf(topo, y)
+		chao = minf(chao, y)
+	# O osso mais baixo tem de ficar em zero ou acima. Negativo quer dizer
+	# personagem enterrado, que e o tipo de erro que se ve e nao se mede.
+	# E o ponto mais baixo da **malha**, que e outra coisa: o osso do pe fica no
+	# tornozelo, e a sola desce abaixo dele. E a sola que encosta no chao.
+	var sola := INF
+	for no in _todos(_raiz):
+		if no is MeshInstance3D and (no as MeshInstance3D).mesh != null:
+			var malha := no as MeshInstance3D
+			var caixa := malha.global_transform * malha.mesh.get_aabb()
+			sola = minf(sola, caixa.position.y)
+
+	GameLog.verbose(GameLog.Channel.SYSTEM,
+		"Altura montada: %.3f m; osso mais baixo %.3f m; malha mais baixa %.3f m." % [topo, chao, sola])
 
 
 ## Verdadeiro quando o personagem escolhido aceita cabelo, tom de pele e roupa.
@@ -548,7 +570,35 @@ func _montar_modular(escolha: Dictionary) -> bool:
 	_montar_asas(modelo)
 	_usando_modelo = true
 	_tocar(_anim_parado)
+	# Depois de tudo montado: so ai da para saber onde fica a sola, porque a
+	# bota faz parte da roupa e muda o ponto mais baixo.
+	call_deferred("_assentar_no_chao", modelo)
 	return true
+
+
+## Levanta o modelo ate a sola encostar em y = 0.
+##
+## O osso do pe fica no tornozelo, nao na sola -- alinhar o esqueleto em zero
+## deixa o pe 1 cm enterrado, que e pouco no numero e obvio na tela. Medido em
+## cena porque depende do calcado: a bota do Patrulheiro desce mais que o pe
+## descalco.
+##
+## So vale para o kit modular. Nos KayKit a AABB da malha e da pose de vinculo e
+## devolve -1,3 m, que nao tem relacao com onde o personagem pisa -- corrigir
+## por ela jogaria o personagem para o alto.
+func _assentar_no_chao(modelo: Node3D) -> void:
+	if not is_instance_valid(modelo) or not modelo.is_inside_tree():
+		return
+	var sola := INF
+	for no in _todos(modelo):
+		if no is MeshInstance3D and (no as MeshInstance3D).mesh != null:
+			var malha := no as MeshInstance3D
+			sola = minf(sola, (malha.global_transform * malha.mesh.get_aabb()).position.y)
+	if sola == INF or absf(sola) < 0.001:
+		return
+	# Em relacao ao avatar, que esta nos pes do personagem.
+	modelo.position.y -= sola - global_position.y
+	GameLog.verbose(GameLog.Channel.SYSTEM, "Personagem assentado: sola estava em %.3f m." % sola)
 
 
 func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
@@ -635,6 +685,7 @@ func _montar_animador_modular(modelo: Node3D) -> AnimationPlayer:
 	_anim_sentar_desce = String(nomes.get("sentar_desce", ""))
 	_anim_sentado = String(nomes.get("sentado", ""))
 	_anim_sentar_levanta = String(nomes.get("sentar_levanta", _anim_parado))
+	_anim_montado = String(nomes.get("montado", ""))
 
 	var animador := AnimationPlayer.new()
 	animador.name = "Animador"
@@ -939,3 +990,29 @@ func _ao_terminar_animacao(nome: StringName) -> void:
 		return
 	_transicao = ""
 	_tocar(_depois_da_transicao)
+
+
+# --- montaria -----------------------------------------------------------------
+
+## Este personagem tem pose de montaria?
+func pode_montar() -> bool:
+	return _animador != null and _anim_montado != "" and _animador.has_animation(_anim_montado)
+
+
+## Entra na pose de quem esta na sela. Devolve false quando o kit nao tem a
+## pose -- quem chamou decide se monta em pe mesmo ou se nem monta.
+func montar() -> bool:
+	if not pode_montar():
+		return false
+	_state = State.SENTADO
+	_transicao = ""
+	_tocar(_anim_montado)
+	return true
+
+
+func desmontar() -> void:
+	if _state != State.SENTADO:
+		return
+	_state = State.IDLE
+	_transicao = ""
+	_tocar(_anim_parado)

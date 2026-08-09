@@ -99,6 +99,8 @@ func _abrir_painel_de_teste() -> void:
 				pause_menu.abrir_configuracoes()
 			"sentar":
 				player.sentar()
+			"montaria":
+				player.montar()
 			"descanso":
 				# Descansar exige andar ate a fogueira e apertar E, e um teste
 				# automatico nao faz nenhum dos dois.

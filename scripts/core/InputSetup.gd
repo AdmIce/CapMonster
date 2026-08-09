@@ -38,7 +38,11 @@ const DEFAULT_BINDINGS := {
 	"inventory": [KEY_I, KEY_TAB],
 	"toggle_camera": [KEY_C],
 	"map": [KEY_M],
-	"toggle_debug": [KEY_F1],
+	# F1 e a montaria, a pedido. O menu de debug saiu para F3: ele so existe em
+	# build de debug e e ferramenta de quem faz o jogo, enquanto o cavalo e de
+	# quem joga -- entre os dois, a tecla facil e do jogador.
+	"montaria": [KEY_F1],
+	"toggle_debug": [KEY_F3],
 	"quick_save": [KEY_F5],
 }
 
