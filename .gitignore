@@ -27,3 +27,4 @@ __pycache__/
 # carregar arquivo que o Godot nem abre.
 /fogueira/
 /mapas/
+/sprites/
