@@ -17,6 +17,19 @@ const DISTANCIA_DE_SALTO := 12.0
 const SUAVIDADE := 12.0
 const ALTURA_DO_NOME := 2.15
 
+## Tamanho do nome flutuante.
+##
+## Com `fixed_size`, a etiqueta não encolhe com a distância: a altura dela na
+## tela é mais ou menos `TAMANHO_FONTE * PIXEL * altura_da_viewport / (2·tan(fov/2))`.
+## Com fov 58 e 720p isso dá ~649 de fator, então o 0,0032 de antes rendia uns
+## **66 pixels** de altura — nome maior que a cabeça do boneco. 0,0008 põe em
+## torno de 17, na mesma faixa do texto do HUD.
+const TAMANHO_FONTE := 32
+const PIXEL_DO_NOME := 0.0008
+## O contorno é medido na escala da fonte, não na da tela: 12 sobre uma fonte 32
+## engrossava a letra a ponto de fechar os buracos do "a" e do "o".
+const CONTORNO_DO_NOME := 5
+
 var id_do_peer: int = 0
 
 var _avatar: PlayerAvatar = null
@@ -48,8 +61,9 @@ func _ready() -> void:
 	_etiqueta.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_etiqueta.no_depth_test = true
 	_etiqueta.fixed_size = true
-	_etiqueta.pixel_size = 0.0032
-	_etiqueta.outline_size = 12
+	_etiqueta.font_size = TAMANHO_FONTE
+	_etiqueta.pixel_size = PIXEL_DO_NOME
+	_etiqueta.outline_size = CONTORNO_DO_NOME
 	_etiqueta.modulate = Design.GOLD_CLARO
 	_etiqueta.outline_modulate = Color(0.05, 0.05, 0.06, 0.9)
 	_etiqueta.position = Vector3(0, ALTURA_DO_NOME, 0)
