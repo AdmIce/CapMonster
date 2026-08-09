@@ -173,6 +173,9 @@ func save_metadata(slot: int = 0) -> Dictionary:
 	if not (payload is Dictionary):
 		return {}
 	var player: Dictionary = payload.get("player", {})
+	# A aparência entra no resumo para a tela de seleção conseguir mostrar o
+	# boneco de cada personagem em 3D. Sem ela, a lista seria só nome e número — e
+	# o que faz alguém reconhecer o próprio personagem é a cara dele.
 	return {
 		"name": player.get("name", "Treinador"),
 		"level": int(player.get("level", 1)),
@@ -180,6 +183,7 @@ func save_metadata(slot: int = 0) -> Dictionary:
 		"creatures": (player.get("collection", []) as Array).size(),
 		"saved_at": int(payload.get("saved_at", 0)),
 		"playtime": float(player.get("playtime", 0.0)),
+		"appearance": (player.get("appearance", {}) as Dictionary).duplicate(),
 	}
 
 

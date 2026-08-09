@@ -5,8 +5,10 @@ extends Control
 ## O card mais recentemente jogado vem em destaque, para quem voltou ao jogo
 ## reconhecer o próprio personagem sem ter de ler os detalhes de todo mundo.
 
-const LARGURA_CARD := 300.0
-const MAX_COLUNAS := 3
+const LARGURA_CARD := 268.0
+const MAX_COLUNAS := 4
+## Tamanho do boneco dentro do cartao.
+const RETRATO := Vector2i(232, 250)
 
 var _grade: GridContainer = null
 var _aviso: Label = null
@@ -24,6 +26,10 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	# O mesmo vídeo do menu, para a passagem de uma tela para a outra não parecer
+	# troca de jogo. Sem ele esta tela era um retângulo preto.
+	add_child(VideoBackdrop.criar("mountain-cabin"))
+
 	var margin := Design.margin(Design.S_XL)
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(margin)
@@ -32,8 +38,17 @@ func _build() -> void:
 	margin.add_child(column)
 
 	var header := Design.vbox(Design.S_XS)
-	header.add_child(Design.label("QUEM VAI JOGAR?", Design.FS_LABEL, Design.ACCENT))
-	header.add_child(Design.heading("Selecione um personagem", Design.FS_TITLE, Design.TEXT_CLARO))
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	var etiqueta := Design.sobre_o_mundo(
+		Design.label("QUEM VAI JOGAR?", Design.FS_LABEL, Design.GOLD_CLARO), 3
+	)
+	etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_child(etiqueta)
+	var titulo := Design.sobre_o_mundo(
+		Design.heading("Selecione um personagem", Design.FS_TITLE, Design.TEXT_CLARO), 6
+	)
+	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_child(titulo)
 	column.add_child(header)
 
 	var rolagem := ScrollContainer.new()
@@ -44,15 +59,22 @@ func _build() -> void:
 
 	var conteudo := Design.vbox(Design.S_MD)
 	conteudo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	conteudo.alignment = BoxContainer.ALIGNMENT_CENTER
 	rolagem.add_child(conteudo)
+
+	# Centralizada: com um ou dois personagens, uma grade colada na esquerda
+	# deixa a tela parecendo quebrada em vez de vazia de propósito.
+	var centro := CenterContainer.new()
+	centro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	conteudo.add_child(centro)
 
 	_grade = GridContainer.new()
 	_grade.add_theme_constant_override("h_separation", Design.S_MD)
 	_grade.add_theme_constant_override("v_separation", Design.S_MD)
-	_grade.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	conteudo.add_child(_grade)
+	centro.add_child(_grade)
 
-	_aviso = Design.body("", Design.TEXT_CLARO_DIM)
+	_aviso = Design.sobre_o_mundo(Design.body("", Design.TEXT_CLARO_MUTED), 3)
+	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	conteudo.add_child(_aviso)
 
 	var footer := Design.hbox(Design.S_MD)
@@ -115,13 +137,25 @@ func _cartao(slot: int, meta: Dictionary, recente: bool) -> Control:
 	var coluna := Design.vbox(Design.S_SM)
 	cartao.add_child(coluna)
 
-	var nome := Design.heading(String(meta.get("name", "Treinador")), Design.FS_HEADING, Design.TEXT)
-	nome.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nome.add_theme_constant_override("line_spacing", -2)
-	coluna.add_child(nome)
+	# O boneco em 3D, no painel afundado do pacote: é ele que faz alguém
+	# reconhecer o próprio personagem sem ler nada.
+	var moldura := Design.panel(Design.SURFACE_SUNKEN)
+	moldura.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	moldura.add_child(RetratoPersonagem.criar(
+		meta.get("appearance", {}) as Dictionary, RETRATO, recente
+	))
+	coluna.add_child(moldura)
 
+	var linha_nome := Design.hbox(Design.S_XS)
+	var nome := Design.heading(String(meta.get("name", "Treinador")), Design.FS_HEADING, Design.TEXT)
+	nome.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nome.clip_text = true
+	linha_nome.add_child(nome)
 	if recente:
-		coluna.add_child(Design.chip("último", Design.ACCENT))
+		var marca := Design.chip("último", Design.ACCENT)
+		marca.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		linha_nome.add_child(marca)
+	coluna.add_child(linha_nome)
 
 	var mapa := DataManager.get_map_name(String(meta.get("map", "")))
 	if mapa == "":
@@ -159,9 +193,22 @@ func _pode_jogar() -> bool:
 
 
 func _atualizar_rede() -> void:
+	var pronto := _pode_jogar()
 	for botao in _botoes_jogar:
 		if is_instance_valid(botao):
-			botao.disabled = not _pode_jogar()
+			botao.disabled = not pronto
+
+	# Botão apagado precisa dizer o motivo. Sem isto o jogador clica em "Jogar",
+	# não acontece nada, e ele conclui que o jogo travou — quando na verdade é a
+	# conexão com o servidor que ainda não fechou.
+	if _aviso == null:
+		return
+	if not pronto:
+		_aviso.text = "Conectando ao servidor... o jogo só entra online."
+		_aviso.visible = true
+	elif _aviso.text.begins_with("Conectando"):
+		_aviso.text = ""
+		_aviso.visible = false
 
 
 # --- ações --------------------------------------------------------------------
