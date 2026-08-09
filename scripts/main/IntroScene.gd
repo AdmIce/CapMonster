@@ -183,7 +183,15 @@ func _montar_pedestais(madeira: Color) -> void:
 
 func _montar_personagens() -> void:
 	var professor: Dictionary = _intro.get("professor", {})
-	var figura := HumanoidBuilder.build(professor.get("colors", {}), "researcher")
+	# O mesmo professor aparece aqui e na Vila Juncal, então o desenho é o mesmo
+	# campo de JSON nos dois lugares: trocar a arte dele é editar dois valores,
+	# não mexer em código.
+	var desenho := str(professor.get("sprite", ""))
+	var figura: Node3D
+	if NpcSprite.disponivel(desenho):
+		figura = NpcSprite.criar(desenho, professor.get("sprite_quadros", []) as Array)
+	else:
+		figura = HumanoidBuilder.build(professor.get("colors", {}), "researcher")
 	var no_professor := Node3D.new()
 	no_professor.position = Vector3(-3.9, 0, -0.6)
 	no_professor.rotation_degrees.y = 160

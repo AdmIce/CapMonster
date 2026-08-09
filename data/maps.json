@@ -100,6 +100,8 @@
         {
           "id": "prof_elir", "name": "Professor Elir", "role": "researcher", "pos": [9, 2], "yaw": -160,
           "colors": { "skin": "#E0BC98", "hair": "#8C4B32", "outfit": "#3F5F58", "trim": "#9AA3AD" },
+          "sprite": "res://assets/npc/ash.png",
+          "sprite_quadros": [0, 1],
           "lines": [
             "Núcleo de Vínculo só morde quando a criatura já está bem castigada.",
             "Espécie rara resiste mais. Não desperdice núcleo num Guardarriacho inteiro.",

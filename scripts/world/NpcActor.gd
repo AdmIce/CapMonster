@@ -17,9 +17,14 @@ var lines: Array = []
 var heals_team: bool = false
 ## Preenchido quando o NPC tem `shop` no maps.json.
 var shop: Dictionary = {}
+## Caminho de um desenho em `assets/npc/`. Vazio monta o corpo de caixas.
+var sprite: String = ""
+## Quais quadros do desenho entram na animação; vazio usa todos. Ver NpcSprite.
+var sprite_quadros: Array = []
 
 var _body: Node3D = null
 var _phase: float = 0.0
+var _desenhado: bool = false
 
 
 static func create(data: Dictionary) -> NpcActor:
@@ -34,6 +39,8 @@ static func create(data: Dictionary) -> NpcActor:
 	npc.verb = "Negociar com" if not npc.shop.is_empty() else "Falar com"
 	npc.name = "Npc_%s" % npc.npc_id
 	npc.set_meta("colors", data.get("colors", {}))
+	npc.sprite = str(data.get("sprite", ""))
+	npc.sprite_quadros = (data.get("sprite_quadros", []) as Array).duplicate()
 	var pos: Array = data.get("pos", [0, 0])
 	npc.position = Vector3(pos[0], 0.0, pos[1])
 	npc.rotation_degrees.y = float(data.get("yaw", 0))
@@ -42,7 +49,16 @@ static func create(data: Dictionary) -> NpcActor:
 
 func _ready() -> void:
 	super._ready()
-	_body = HumanoidBuilder.build(get_meta("colors", {}), role)
+	# Um desenho declarado que não existe no disco cairia numa figura invisível.
+	# Voltar para o corpo de caixas deixa o NPC conversável do mesmo jeito, e o
+	# aviso do NpcSprite diz o que faltou.
+	if NpcSprite.disponivel(sprite):
+		_body = NpcSprite.criar(sprite, sprite_quadros)
+		_desenhado = true
+	else:
+		if sprite != "":
+			push_warning("NpcActor %s: desenho '%s' nao encontrado, usando o corpo padrao." % [npc_id, sprite])
+		_body = HumanoidBuilder.build(get_meta("colors", {}), role)
 	add_child(_body)
 	_build_collider()
 
@@ -52,7 +68,11 @@ func _process(delta: float) -> void:
 		return
 	_phase += delta * IDLE_SWAY_SPEED
 	_body.position.y = sin(_phase) * 0.02
-	_body.rotation_degrees.y = sin(_phase * 0.45) * 3.0
+	# NPC desenhado não balança: ele já tem animação própria nos quadros, e
+	# girar uma figura que está sempre de frente para a câmera não faz nada
+	# além de arrastar o desenho de lado.
+	if not _desenhado:
+		_body.rotation_degrees.y = sin(_phase * 0.45) * 3.0
 
 
 func _build_collider() -> void:

@@ -1,14 +1,18 @@
 {
   "_comentario": [
-    "Roteiro da abertura. A cena Intro.tscn lê tudo daqui - trocar o texto do professor,",
-    "o nome dele ou a ordem das falas é edição de JSON, não de código.",
-    "{criatura} nas falas é substituído pelo nome da criatura escolhida."
+    "Roteiro da abertura. A cena Intro.tscn lÃª tudo daqui - trocar o texto do professor,",
+    "o nome dele ou a ordem das falas Ã© ediÃ§Ã£o de JSON, nÃ£o de cÃ³digo.",
+    "{criatura} nas falas Ã© substituÃ­do pelo nome da criatura escolhida."
   ],
   "professor": {
     "id": "prof_elir",
     "name": "Professor Elir",
     "titulo": "Pesquisador de campo da Vila Juncal",
-    "colors": { "skin": "#E0BC98", "hair": "#8C4B32", "outfit": "#3F5F58", "trim": "#9AA3AD" }
+    "colors": { "skin": "#E0BC98", "hair": "#8C4B32", "outfit": "#3F5F58", "trim": "#9AA3AD" },
+    "_sprite": "Desenho no lugar do corpo de caixas. As cores acima ficam como reserva: se o png sumir, o professor volta a ser montado com elas.",
+    "sprite": "res://assets/npc/ash.png",
+    "_sprite_quadros": "A folha convertida termina com a assinatura da artista, que nao e o personagem - por isso so os dois primeiros quadros entram na animacao.",
+    "sprite_quadros": [0, 1]
   },
   "cenario": {
     "nome": "Posto de pesquisa",
@@ -20,22 +24,22 @@
     "ambient_energy": 0.42
   },
   "falas_abertura": [
-    "Chegou. Fecha a porta atrás de você, o vento de fora derruba minhas anotações.",
-    "Meu nome é Elir. Passo os dias catalogando o que vive nos arredores desta vila.",
-    "O que você vai ver lá fora não são animais comuns. São criaturas de éter: matéria viva que a região exala e que endurece em corpo, temperamento e vontade própria.",
-    "Elas não obedecem por medo. Elas se vinculam. E só se vinculam a quem consegue segurá-las quando já estão cansadas de brigar.",
-    "É pra isso que serve isto aqui.",
-    "Núcleo de Vínculo. Resina oca semeada com éter. Você desgasta a criatura numa luta honesta, arremessa o núcleo, e ele fecha em volta dela.",
-    "Sete elementos, cinco faixas de raridade, e uma regra que ninguém quebra: você anda com três. Só três. O resto fica na sua coleção esperando a vez.",
-    "Valverde é o lugar mais tranquilo daqui até a serra. Ainda assim tem algo velho dormindo no fundo daquela mata, e um dia você vai ter que encarar.",
-    "Mas não hoje. Hoje você só precisa escolher com quem vai começar."
+    "Chegou. Fecha a porta atrÃ¡s de vocÃª, o vento de fora derruba minhas anotaÃ§Ãµes.",
+    "Meu nome Ã© Elir. Passo os dias catalogando o que vive nos arredores desta vila.",
+    "O que vocÃª vai ver lÃ¡ fora nÃ£o sÃ£o animais comuns. SÃ£o criaturas de Ã©ter: matÃ©ria viva que a regiÃ£o exala e que endurece em corpo, temperamento e vontade prÃ³pria.",
+    "Elas nÃ£o obedecem por medo. Elas se vinculam. E sÃ³ se vinculam a quem consegue segurÃ¡-las quando jÃ¡ estÃ£o cansadas de brigar.",
+    "Ã‰ pra isso que serve isto aqui.",
+    "NÃºcleo de VÃ­nculo. Resina oca semeada com Ã©ter. VocÃª desgasta a criatura numa luta honesta, arremessa o nÃºcleo, e ele fecha em volta dela.",
+    "Sete elementos, cinco faixas de raridade, e uma regra que ninguÃ©m quebra: vocÃª anda com trÃªs. SÃ³ trÃªs. O resto fica na sua coleÃ§Ã£o esperando a vez.",
+    "Valverde Ã© o lugar mais tranquilo daqui atÃ© a serra. Ainda assim tem algo velho dormindo no fundo daquela mata, e um dia vocÃª vai ter que encarar.",
+    "Mas nÃ£o hoje. Hoje vocÃª sÃ³ precisa escolher com quem vai comeÃ§ar."
   ],
-  "fala_escolha": "Três delas foram criadas aqui. Chegue perto, olhe direito. A que você levar vai te manter vivo nas próximas semanas.",
-  "fala_confirmacao": "{criatura}. Boa escolha - e cuide bem dela, porque ela vai se lembrar de como você luta.",
+  "fala_escolha": "TrÃªs delas foram criadas aqui. Chegue perto, olhe direito. A que vocÃª levar vai te manter vivo nas prÃ³ximas semanas.",
+  "fala_confirmacao": "{criatura}. Boa escolha - e cuide bem dela, porque ela vai se lembrar de como vocÃª luta.",
   "falas_encerramento": [
-    "Levei oito Núcleos de Vínculo e três Poções Vitais na sua mochila. É o que a vila consegue bancar.",
-    "Suba pro norte quando estiver pronto. Maren está no caminho e explica o resto melhor que eu.",
-    "Vai lá."
+    "Levei oito NÃºcleos de VÃ­nculo e trÃªs PoÃ§Ãµes Vitais na sua mochila. Ã‰ o que a vila consegue bancar.",
+    "Suba pro norte quando estiver pronto. Maren estÃ¡ no caminho e explica o resto melhor que eu.",
+    "Vai lÃ¡."
   ],
-  "dica_final": "WASD para andar  ·  E para interagir  ·  Esc para o menu"
+  "dica_final": "WASD para andar  Â·  E para interagir  Â·  Esc para o menu"
 }
