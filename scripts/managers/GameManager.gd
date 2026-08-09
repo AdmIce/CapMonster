@@ -17,6 +17,9 @@ var modo_servidor: bool = false
 
 var player: PlayerData = null
 var is_in_session: bool = false
+## Slot do save onde mora o personagem em sessão. Sem personagem (-1) não há
+## onde gravar: criar um jogo novo escolhe o primeiro slot livre.
+var slot_ativo: int = -1
 ## Recompensa offline é paga uma vez por sessão, não a cada troca de mapa.
 ## Runtime puro: não vai para o save, senão nunca mais pagaria.
 var idle_processado: bool = false
@@ -46,7 +49,19 @@ func has_player() -> bool:
 # --- lifecycle ----------------------------------------------------------------
 
 ## Creates a fresh player. The starter is chosen right after, in StarterChoice.
-func new_game(display_name: String, appearance: Dictionary) -> PlayerData:
+## `slot` -1 deixa o SaveManager escolher o primeiro slot livre; -1 continua
+## quando todos estão ocupados, porque criar sobre outro personagem nunca é a
+## intenção.
+func new_game(display_name: String, appearance: Dictionary, slot: int = -1) -> PlayerData:
+	if slot < 0:
+		slot = SaveManager.free_slot()
+	if slot < 0:
+		GameLog.warn(
+			GameLog.Channel.SYSTEM,
+			"Todos os %d slots de personagem estão ocupados." % SaveManager.MAX_SLOTS
+		)
+		return null
+	slot_ativo = slot
 	player = PlayerData.new()
 	player.display_name = display_name.strip_edges()
 	if player.display_name == "":
@@ -90,10 +105,11 @@ func begin_session() -> void:
 	session_started.emit(player)
 
 
-func continue_game() -> bool:
-	var loaded := SaveManager.load_game()
+func continue_game(slot: int = 0) -> bool:
+	var loaded := SaveManager.load_game(slot)
 	if loaded == null:
 		return false
+	slot_ativo = slot
 	is_restoring = true
 	player = loaded
 	if not DataManager.has_map(player.current_map):

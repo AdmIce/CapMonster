@@ -77,7 +77,7 @@ func _build() -> void:
 	column.add_child(footer)
 
 	var back := Design.button("Voltar", "ghost")
-	back.pressed.connect(func(): SceneFlow.goto_main_menu())
+	back.pressed.connect(func(): SceneFlow.goto_character_select())
 	footer.add_child(back)
 
 	footer.add_child(Design.expander())
@@ -286,5 +286,10 @@ func _on_confirm() -> void:
 	var chosen_name := _name_field.text.strip_edges()
 	if chosen_name == "":
 		chosen_name = "Treinador"
-	GameManager.new_game(chosen_name, _appearance)
+	var novo := GameManager.new_game(chosen_name, _appearance)
+	if novo == null:
+		# Todos os slots ocupados: criar agora sobrescreveria outro personagem,
+		# então o caminho certo é voltar para a seleção e decidir quem apagar.
+		Notify.bad("Máximo de personagens atingido. Apague um para criar outro.")
+		return
 	SceneFlow.goto_intro()

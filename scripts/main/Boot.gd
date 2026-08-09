@@ -97,6 +97,9 @@ func _boot() -> void:
 		if args.has("--smoke-criacao"):
 			SceneFlow.goto_character_creation()
 			return
+		if args.has("--smoke-selecao"):
+			SceneFlow.goto_character_select()
+			return
 		if args.has("--smoke-intro"):
 			_run_intro_test()
 			return
@@ -160,7 +163,12 @@ func _subir_servidor() -> void:
 	Engine.physics_ticks_per_second = SERVIDOR_QUADROS
 
 	GameManager.modo_servidor = true
-	GameManager.new_game("Servidor", {})
+	if GameManager.new_game("Servidor", {}) == null:
+		# Servidor numa máquina com slots cheios: sem jogador local não há mundo
+		# a construir, então valhtar a porta não adianta.
+		GameLog.error(GameLog.Channel.SYSTEM, "Servidor: nenhum slot de personagem livre.")
+		get_tree().quit(1)
+		return
 	GameManager.player.current_map = mapa
 	GameManager.player.has_exact_position = false
 

@@ -14,10 +14,11 @@ signal game_loaded()
 signal save_deleted()
 
 const SAVE_DIR := "user://saves/"
-const SAVE_FILE := "user://saves/slot_0.json"
-const SAVE_TMP := "user://saves/slot_0.json.tmp"
 const SETTINGS_FILE := "user://settings.json"
 const CURRENT_VERSION := 1
+## Quantos personagens cabem ao mesmo tempo. A tela de seleção mostra um card
+## por slot ocupado; no limite, criar exige apagar algum primeiro.
+const MAX_SLOTS := 6
 
 const AUTOSAVE_INTERVAL_SECONDS := 180.0
 
@@ -49,13 +50,36 @@ func _ready() -> void:
 
 # --- save slot ----------------------------------------------------------------
 
-func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_FILE)
+func has_save(slot: int = 0) -> bool:
+	return FileAccess.file_exists(_slot_path(slot))
 
 
-func save_game(player: PlayerData, reason: String = "manual") -> bool:
+## Primeiro slot livre, ou -1 se todos estiverem ocupados. A criação de
+## personagem usa isto para decidir onde gravar sem perguntar nada.
+func free_slot() -> int:
+	for slot in MAX_SLOTS:
+		if not has_save(slot):
+			return slot
+	return -1
+
+
+static func _slot_path(slot: int) -> String:
+	return "%sslot_%d.json" % [SAVE_DIR, slot]
+
+
+static func _slot_tmp_path(slot: int) -> String:
+	return "%sslot_%d.json.tmp" % [SAVE_DIR, slot]
+
+
+## `slot` -1 significa "o personagem em andamento": quem manda é o
+## `GameManager.slot_ativo`, que a criação e a continuação configuram.
+func save_game(player: PlayerData, reason: String = "manual", slot: int = -1) -> bool:
 	if player == null:
 		GameLog.warn(GameLog.Channel.SAVE, "save_game() chamado sem dados de jogador.")
+		return false
+	var alvo := slot if slot >= 0 else GameManager.slot_ativo
+	if alvo < 0 or alvo >= MAX_SLOTS:
+		GameLog.warn(GameLog.Channel.SAVE, "save_game(): nenhum slot de personagem em turno.")
 		return false
 
 	player.last_seen_unix = int(Time.get_unix_time_from_system())
@@ -66,29 +90,30 @@ func save_game(player: PlayerData, reason: String = "manual") -> bool:
 		"player": player.to_dict(),
 	}
 
-	if not _write_file(SAVE_TMP, JSON.stringify(payload, "\t")):
+	if not _write_file(_slot_tmp_path(alvo), JSON.stringify(payload, "\t")):
 		return false
 	var dir := DirAccess.open(SAVE_DIR)
 	if dir == null:
 		GameLog.error(GameLog.Channel.SAVE, "Não foi possível abrir %s" % SAVE_DIR)
 		return false
-	if dir.file_exists("slot_0.json"):
-		dir.remove("slot_0.json")
-	var err := dir.rename("slot_0.json.tmp", "slot_0.json")
+	var nome := "slot_%d.json" % alvo
+	if dir.file_exists(nome):
+		dir.remove(nome)
+	var err := dir.rename("slot_%d.json.tmp" % alvo, nome)
 	if err != OK:
 		GameLog.error(GameLog.Channel.SAVE, "Falha ao gravar o save (erro %d)" % err)
 		return false
 
-	GameLog.info(GameLog.Channel.SAVE, "Salvo (%s)." % reason)
+	GameLog.info(GameLog.Channel.SAVE, "Salvo no slot %d (%s)." % [alvo, reason])
 	game_saved.emit(reason)
 	return true
 
 
-func load_game() -> PlayerData:
-	if not has_save():
-		GameLog.info(GameLog.Channel.SAVE, "Nenhum save encontrado.")
+func load_game(slot: int = 0) -> PlayerData:
+	if not has_save(slot):
+		GameLog.info(GameLog.Channel.SAVE, "Nenhum save no slot %d." % slot)
 		return null
-	var text := _read_file(SAVE_FILE)
+	var text := _read_file(_slot_path(slot))
 	if text == "":
 		return null
 	var payload: Variant = JSON.parse_string(text)
@@ -122,37 +147,53 @@ func _migrate(payload: Dictionary, from_version: int) -> Dictionary:
 	return payload
 
 
-func delete_save() -> bool:
-	if not has_save():
+func delete_save(slot: int = 0) -> bool:
+	if not has_save(slot):
 		return false
 	var dir := DirAccess.open(SAVE_DIR)
 	if dir == null:
 		return false
-	var err := dir.remove("slot_0.json")
+	var err := dir.remove("slot_%d.json" % slot)
 	if err != OK:
-		GameLog.error(GameLog.Channel.SAVE, "Não foi possível apagar o save (erro %d)" % err)
+		GameLog.error(GameLog.Channel.SAVE, "Não foi possível apagar o slot %d (erro %d)" % [slot, err])
 		return false
-	GameLog.info(GameLog.Channel.SAVE, "Save apagado.")
+	# O .tmp é resto de uma gravação interrompida; apagar junto evita o slot 0
+	# renascer da lixeira num próximo `free_slot()`.
+	dir.remove("slot_%d.json.tmp" % slot)
+	GameLog.info(GameLog.Channel.SAVE, "Slot %d apagado." % slot)
 	save_deleted.emit()
 	return true
 
 
-func save_metadata() -> Dictionary:
-	if not has_save():
+func save_metadata(slot: int = 0) -> Dictionary:
+	if not has_save(slot):
 		return {}
-	var text := _read_file(SAVE_FILE)
+	var text := _read_file(_slot_path(slot))
 	var payload: Variant = JSON.parse_string(text)
 	if not (payload is Dictionary):
 		return {}
 	var player: Dictionary = payload.get("player", {})
 	return {
-		"name": player.get("name", "Trainer"),
+		"name": player.get("name", "Treinador"),
 		"level": int(player.get("level", 1)),
 		"map": String(player.get("current_map", "")),
 		"creatures": (player.get("collection", []) as Array).size(),
 		"saved_at": int(payload.get("saved_at", 0)),
 		"playtime": float(player.get("playtime", 0.0)),
 	}
+
+
+## Metadados de todos os slots ocupados, em ordem. Cada item traz o índice no
+## campo "slot" para a tela de seleção saber onde continuar, apagar ou falar.
+func save_slots() -> Array[Dictionary]:
+	var resultado: Array[Dictionary] = []
+	for slot in MAX_SLOTS:
+		var meta := save_metadata(slot)
+		if meta.is_empty():
+			continue
+		meta["slot"] = slot
+		resultado.append(meta)
+	return resultado
 
 
 # --- autosave -----------------------------------------------------------------

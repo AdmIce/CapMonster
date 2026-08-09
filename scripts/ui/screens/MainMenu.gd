@@ -1,8 +1,8 @@
 extends Control
-## Tela de título. "Continuar" só fica ativo quando existe save de verdade, e
-## mostra o que tem dentro dele para o jogador não ficar adivinhando.
+## Tela de título. "Jogar" abre a seleção de personagem, onde o jogador continua
+## um save ou cria outro; a linha abaixo mostra quantos personagens existem.
 
-var _continue_button: Button = null
+var _jogar_button: Button = null
 var _settings_overlay: Control = null
 ## Node, não Control: o painel de online é um CanvasLayer, para ficar por cima
 ## do vídeo de fundo sem entrar no layout da coluna.
@@ -67,18 +67,14 @@ func _build() -> void:
 	Responsivo.largura(right, 320, 0.32)
 	columns.add_child(right)
 
-	_continue_button = Design.button("Continuar", "primary", true)
-	_continue_button.pressed.connect(_on_continue)
-	right.add_child(_continue_button)
+	_jogar_button = Design.button("Jogar", "primary", true)
+	_jogar_button.pressed.connect(_on_jogar)
+	right.add_child(_jogar_button)
 
 	var save_info := Design.sobre_o_mundo(Design.caption("", Design.TEXT_CLARO_MUTED), 3)
 	right.add_child(save_info)
 
 	right.add_child(Design.spacer(Design.S_SM))
-
-	var new_game := Design.button("Novo jogo", "default", true)
-	new_game.pressed.connect(_on_new_game)
-	right.add_child(new_game)
 
 	# Com servidor oficial nao ha o que escolher: o jogo entra sozinho. O botao
 	# vira "quem esta online", e a linha abaixo dele diz o estado da conexao.
@@ -100,7 +96,7 @@ func _build() -> void:
 	quit.pressed.connect(_on_quit)
 	right.add_child(quit)
 
-	_botoes_de_jogo = [_continue_button, new_game]
+	_botoes_de_jogo = [_jogar_button]
 	_refresh_save_state(save_info)
 	_procurar_atualizacao()
 	_ligar_no_servidor()
@@ -142,8 +138,7 @@ func _atualizar_estado_da_rede() -> void:
 	var pronto := Rede.online()
 	for botao in _botoes_de_jogo:
 		if botao != null and is_instance_valid(botao):
-			# "Continuar" tem a propria regra (so com save); a rede so pode piorar.
-			botao.disabled = not pronto or botao.get_meta("sem_save", false)
+			botao.disabled = not pronto
 
 	match Rede.estado:
 		Rede.Estado.CONECTADO, Rede.Estado.HOSPEDANDO:
@@ -167,53 +162,23 @@ func _tentar_de_novo() -> void:
 
 
 func _refresh_save_state(info: Label) -> void:
-	var metadata := SaveManager.save_metadata()
-	if metadata.is_empty():
-		_continue_button.disabled = true
-		_continue_button.set_meta("sem_save", true)
-		info.text = "Nenhum save encontrado. Comece um jogo novo."
-		return
-	_continue_button.set_meta("sem_save", false)
-	_continue_button.disabled = not Rede.online() and Rede.tem_servidor_oficial()
-	var minutes := int(float(metadata.get("playtime", 0.0)) / 60.0)
-	info.text = "%s  ·  Nv.%d  ·  %s  ·  %d criatura(s)  ·  %d min jogados" % [
-		metadata.get("name", "Treinador"),
-		int(metadata.get("level", 1)),
-		DataManager.get_map_name(String(metadata.get("map", ""))),
-		int(metadata.get("creatures", 0)),
-		minutes,
-	]
+	var slots := SaveManager.save_slots()
+	# "Jogar" só a rede pode atrasar; sem personagem a tela de seleção já explica
+	# e leva para a criação. Nada aqui trava sozinho.
+	_jogar_button.disabled = not Rede.online() and Rede.tem_servidor_oficial()
+	if slots.is_empty():
+		info.text = "Nenhum personagem neste dispositivo. Crie o primeiro."
+	else:
+		var nomes: Array[String] = []
+		for meta in slots:
+			nomes.append(String(meta.get("name", "Treinador")))
+		info.text = "%d personagem(ns)  ·  %s" % [slots.size(), ", ".join(nomes)]
 
 
 # --- ações --------------------------------------------------------------------
 
-func _on_continue() -> void:
-	if not GameManager.continue_game():
-		Notify.bad("Não foi possível ler esse save.")
-		return
-	GameManager.begin_session()
-	SceneFlow.goto_world()
-
-
-func _on_new_game() -> void:
-	if SaveManager.has_save():
-		_confirm_overwrite()
-		return
-	SceneFlow.goto_character_creation()
-
-
-func _confirm_overwrite() -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Começar um jogo novo?"
-	dialog.dialog_text = "Isso vai sobrescrever o save atual quando você chegar ao mundo."
-	dialog.ok_button_text = "Começar novo"
-	dialog.cancel_button_text = "Continuar o antigo"
-	add_child(dialog)
-	dialog.confirmed.connect(func():
-		SaveManager.delete_save()
-		SceneFlow.goto_character_creation()
-	)
-	dialog.popup_centered()
+func _on_jogar() -> void:
+	SceneFlow.goto_character_select()
 
 
 ## O menu principal e o unico lugar onde parar tudo para atualizar nao custa

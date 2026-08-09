@@ -170,7 +170,8 @@ func _build() -> void:
 		_toast("Salvo")
 	))
 	column.add_child(_action("Apagar save e voltar ao título", func():
-		SaveManager.delete_save()
+		var slot := GameManager.slot_ativo if GameManager.slot_ativo >= 0 else 0
+		SaveManager.delete_save(slot)
 		GameManager.end_session(false)
 		SceneFlow.goto_main_menu()
 	))
