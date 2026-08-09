@@ -1,0 +1,77 @@
+# Materiais do Dino-Might.
+#
+# O .obj referencia este arquivo em `mtllib`, mas ele nao veio junto com o
+# download - por isso o modelo importava todo branco. Cada `newmtl` abaixo
+# corresponde a um `usemtl` do .obj, na mesma grafia.
+#
+# Os caminhos sao relativos a este arquivo (../textures/).
+# Se alguma parte sair com a textura errada, e so trocar o map_Kd da linha
+# correspondente: nao precisa reexportar nada.
+
+newmtl Body
+Kd 1.000 1.000 1.000
+Ks 0.050 0.050 0.050
+Ns 12.0
+d 1.0
+illum 2
+map_Kd ../textures/New_Ralph.png
+map_Bump ../textures/defaultMat.001_Normal_OpenGL.png
+
+newmtl Eye
+Kd 1.000 1.000 1.000
+Ks 0.600 0.600 0.600
+Ns 90.0
+illum 2
+map_Kd ../textures/New_Ralph.png
+
+newmtl Eyebrows
+Kd 1.000 1.000 1.000
+Ns 8.0
+illum 2
+map_Kd ../textures/New_Ralph.png
+
+newmtl Teeth
+Kd 0.960 0.945 0.910
+Ks 0.300 0.300 0.300
+Ns 45.0
+illum 2
+
+newmtl Tongue
+Kd 0.720 0.310 0.340
+Ks 0.250 0.250 0.250
+Ns 35.0
+illum 2
+
+newmtl Claws
+Kd 0.880 0.860 0.800
+Ks 0.200 0.200 0.200
+Ns 40.0
+illum 2
+
+newmtl Mane.001
+Kd 1.000 1.000 1.000
+Ns 6.0
+illum 2
+map_Kd ../textures/defaultMat.001_Base_Color.png
+map_Bump ../textures/defaultMat.001_Normal_OpenGL.png
+
+newmtl Glasses.001
+Kd 1.000 1.000 1.000
+Ks 0.700 0.700 0.700
+Ns 120.0
+illum 2
+map_Kd ../textures/defaultMat.002_Base_Color.png
+map_Bump ../textures/defaultMat.002_Normal_OpenGL.png
+
+newmtl Glass.001
+Kd 0.720 0.820 0.880
+Ks 0.900 0.900 0.900
+Ns 200.0
+d 0.35
+illum 2
+
+newmtl Dino-Might
+Kd 1.000 1.000 1.000
+Ns 14.0
+illum 2
+map_Kd ../textures/Dino-Might_outfit.png

@@ -1,0 +1,498 @@
+{
+  "_comentario": [
+    "Banco de mapas. A cena do mundo (scenes/maps/World.tscn) é genérica: ela constrói o que estiver descrito aqui.",
+    "Coordenadas são XZ do mundo. rect = [x1, z1, x2, z2]. pos = [x, z]. O chão fica em y = 0.",
+    "O topo da tela é -Z porque a câmera 2.5D olha ao longo de -Z com inclinação fixa para baixo.",
+    "'scatter' é determinístico: mesma semente, mesmo layout. Pontos dentro de 'clearings' ou perto de interagíveis são descartados."
+  ],
+  "maps": [
+    {
+      "id": "vila_juncal",
+      "name": "Vila Juncal",
+      "subtitle": "Onde tudo começa",
+      "order": 1,
+      "unlocked_from_start": true,
+      "recommended_level": 1,
+      "safe_zone": true,
+      "bounds": { "min_x": -34, "max_x": 34, "min_z": -29, "max_z": 29 },
+      "ambient": {
+        "ground_color": "#5C8A4E",
+        "sky_top": "#6FA6D6",
+        "sky_horizon": "#DCE8E4",
+        "sun_color": "#FFF6E2",
+        "sun_energy": 1.25,
+        "sun_pitch": -55,
+        "sun_yaw": -30,
+        "fog_enabled": true,
+        "fog_color": "#C2D8CE",
+        "fog_density": 0.0022,
+        "ambient_energy": 0.62
+      },
+      "spawn_points": {
+        "start": [0, 9],
+        "from_greenvale": [0, -21],
+        "heal_vj_praca": [-9, 5]
+      },
+      "tilemap": {
+        "_comentario": [
+          "Peças do Starter Kit City Builder do Kenney (modelos CC0, código MIT).",
+          "A linha 0 é o norte (-Z). 'origin' é o centro da peça de cima à esquerda.",
+          "step e scale têm que bater: as peças do kit ocupam 1x1 na origem."
+        ],
+        "model_dir": "res://assets/models/city/",
+        "step": 5.0,
+        "scale": 5.0,
+        "origin": [-30, -25],
+        "legend": {
+          ".": { "model": "grass" },
+          "T": { "model": "grass-trees", "collides": true, "height": 0.64 },
+          "t": { "model": "grass-trees-tall", "collides": true, "height": 0.76 },
+          "|": { "model": "road-straight" },
+          "=": { "model": "road-straight", "yaw": 90 },
+          "l": { "model": "road-straight-lightposts" },
+          "+": { "model": "road-intersection" },
+          "P": { "model": "pavement" },
+          "F": { "model": "pavement-fountain", "collides": true, "height": 0.54 },
+          "A": { "model": "building-small-a", "collides": true, "height": 0.95 },
+          "B": { "model": "building-small-b", "collides": true, "height": 1.63 },
+          "C": { "model": "building-small-c", "collides": true, "height": 1.75 },
+          "D": { "model": "building-small-d", "collides": true, "height": 1.0 },
+          "G": { "model": "building-garage", "collides": true, "height": 0.55 }
+        },
+        "rows": [
+          "TTTTTT|TTTTTT",
+          "Tt....l....tT",
+          "T.AB..|..CD.T",
+          "T.....|.....T",
+          "======+======",
+          "T..PPPPPPP..T",
+          "T..PPPFPPP..T",
+          "T..PPPPPPP..T",
+          "T.G.A...B.C.T",
+          "Tt.........tT",
+          "TTTTTTTTTTTTT"
+        ]
+      },
+      "terrain": [],
+      "clearings": [{ "rect": [-34, -29, 34, 29] }],
+      "scatter": [],
+      "landmarks": [
+        { "kind": "banner", "pos": [-3, -8], "yaw": 0, "scale": 1.0, "color": "#4F8A6B" },
+        { "kind": "banner", "pos": [3, -8], "yaw": 0, "scale": 1.0, "color": "#4F8A6B" },
+        { "kind": "signpost", "pos": [4, -14], "yaw": -20, "scale": 1.0, "color": "#6B5539" }
+      ],
+      "blockers": [
+        { "rect": [-34, -29, -32, 29] },
+        { "rect": [32, -29, 34, 29] },
+        { "rect": [-34, -29, 34, -27] },
+        { "rect": [-34, 27, 34, 29] }
+      ],
+      "npcs": [
+        {
+          "id": "healer_orin", "name": "Orin", "role": "healer", "pos": [-9, 2], "yaw": 160,
+          "colors": { "skin": "#8A6242", "hair": "#6B6257", "outfit": "#6E4F6B", "trim": "#D9C98A" },
+          "lines": [
+            "Traga elas aqui sempre que estiverem machucadas. Não cobro nada, não nesta vila.",
+            "Descanse na praça e elas voltam a ficar de pé."
+          ],
+          "heals": true
+        },
+        {
+          "id": "prof_elir", "name": "Professor Elir", "role": "researcher", "pos": [9, 2], "yaw": -160,
+          "colors": { "skin": "#E0BC98", "hair": "#8C4B32", "outfit": "#3F5F58", "trim": "#9AA3AD" },
+          "lines": [
+            "Núcleo de Vínculo só morde quando a criatura já está bem castigada.",
+            "Espécie rara resiste mais. Não desperdice núcleo num Guardarriacho inteiro.",
+            "E não, núcleo nenhum segura um Guardabosque. Nada segura."
+          ]
+        },
+        {
+          "id": "merchant_hobb", "name": "Hobb", "role": "merchant", "pos": [-9, 13], "yaw": -30,
+          "colors": { "skin": "#B98A5E", "hair": "#2E2A26", "outfit": "#7A5A3A", "trim": "#C9922F" },
+          "lines": [
+            "Carreguei o que consegui subir a estrada. Dá uma olhada.",
+            "Compro material também — o que você não usa, alguém lá embaixo usa."
+          ],
+          "shop": {
+            "titulo": "Carroça do Hobb",
+            "vende": ["binding_core", "vital_draught", "field_ration", "greater_binding_core"],
+            "margem_venda": 0.4
+          }
+        }
+      ],
+      "heal_points": [
+        { "id": "vj_praca", "name": "Fonte da Praça", "pos": [-9, 5] }
+      ],
+      "gates": [
+        {
+          "id": "vj_to_greenvale", "name": "Estrada do Norte", "pos": [0, -23],
+          "to_map": "greenvale", "to_spawn": "from_vila_juncal",
+          "requires": {},
+          "color": "#7E7869"
+        }
+      ],
+      "zones": []
+    },
+
+    {
+      "id": "greenvale",
+      "name": "Arredores de Valverde",
+      "subtitle": "A mata velha ao norte da vila",
+      "order": 2,
+      "unlocked_from_start": false,
+      "recommended_level": 1,
+      "bounds": { "min_x": -44, "max_x": 44, "min_z": -34, "max_z": 34 },
+      "ambient": {
+        "ground_color": "#4E7A44",
+        "sky_top": "#6FA6D6",
+        "sky_horizon": "#CFE0DC",
+        "sun_color": "#FFF3DC",
+        "sun_energy": 1.15,
+        "sun_pitch": -52,
+        "sun_yaw": -38,
+        "fog_enabled": true,
+        "fog_color": "#A9C6BC",
+        "fog_density": 0.0035,
+        "ambient_energy": 0.55
+      },
+      "spawn_points": {
+        "start": [0, 28],
+        "from_vila_juncal": [0, 28],
+        "from_ashen_ridge": [37, -25],
+        "heal_gv_camp": [-5, 24]
+      },
+      "terrain": [
+        { "kind": "path",  "rect": [-4, 8, 4, 33],    "color": "#8C7C5E" },
+        { "kind": "path",  "rect": [-4, 2, 26, 8],    "color": "#8C7C5E" },
+        { "kind": "path",  "rect": [22, -20, 28, 4],  "color": "#8C7C5E" },
+        { "kind": "path",  "rect": [-4, -6, 4, 8],    "color": "#8C7C5E" },
+        { "kind": "path",  "rect": [-4, -30, 4, -6],  "color": "#7C6E54" },
+        { "kind": "path",  "rect": [26, -28, 40, -22], "color": "#8C7C5E" },
+        { "kind": "grass", "rect": [-42, 6, -8, 30],  "color": "#5A8A4C" },
+        { "kind": "grass", "rect": [6, 10, 42, 32],   "color": "#568446" },
+        { "kind": "grass", "rect": [-42, -20, -8, 4], "color": "#456F3C" },
+        { "kind": "grass", "rect": [8, -18, 20, 0],   "color": "#4C7742" },
+        { "kind": "grass", "rect": [-30, -32, 18, -22], "color": "#3E6337" },
+        { "kind": "water", "rect": [-40, -16, -22, 2], "color": "#3A7391" },
+        { "kind": "water", "rect": [-24, -4, -12, 2],  "color": "#3A7391" },
+        { "kind": "rock",  "rect": [24, -20, 40, -6],  "color": "#7A7566" },
+        { "kind": "sand",  "rect": [-8, 20, 8, 32],    "color": "#9C8C69" }
+      ],
+      "clearings": [
+        { "rect": [-12, 16, 12, 34] },
+        { "rect": [-6, -32, 6, 10] },
+        { "rect": [-6, 0, 30, 8] },
+        { "rect": [20, -22, 30, 6] },
+        { "rect": [24, -30, 42, -20] },
+        { "rect": [-14, -34, 14, -24] },
+        { "rect": [26, -20, 38, -8] }
+      ],
+      "scatter": [
+        { "kind": "tree",  "rect": [-42, 8, -10, 32],  "count": 22, "seed": 101, "min_scale": 0.9, "max_scale": 1.4, "color": "#3F6B33", "trunk_color": "#5A4632" },
+        { "kind": "tree",  "rect": [8, 10, 42, 32],    "count": 24, "seed": 102, "min_scale": 0.9, "max_scale": 1.5, "color": "#3A6530", "trunk_color": "#5A4632" },
+        { "kind": "tree",  "rect": [-42, -22, -8, 6],  "count": 26, "seed": 103, "min_scale": 1.0, "max_scale": 1.7, "color": "#2F5628", "trunk_color": "#4B3B2A" },
+        { "kind": "tree",  "rect": [-32, -34, 18, -22], "count": 20, "seed": 104, "min_scale": 1.1, "max_scale": 1.8, "color": "#2A4D24", "trunk_color": "#463726" },
+        { "kind": "bush",  "rect": [-40, 4, 40, 32],   "count": 30, "seed": 105, "min_scale": 0.6, "max_scale": 1.1, "color": "#4F7C40", "collides": false },
+        { "kind": "bush",  "rect": [-40, -30, 20, 4],  "count": 26, "seed": 106, "min_scale": 0.6, "max_scale": 1.2, "color": "#3F6635", "collides": false },
+        { "kind": "reed",  "rect": [-42, -18, -10, 4], "count": 24, "seed": 107, "min_scale": 0.7, "max_scale": 1.2, "color": "#7FA05A", "collides": false },
+        { "kind": "rock",  "rect": [22, -22, 42, -4],  "count": 16, "seed": 108, "min_scale": 0.7, "max_scale": 1.6, "color": "#75705F" },
+        { "kind": "stump", "rect": [-30, -20, 16, 8],  "count": 10, "seed": 109, "min_scale": 0.8, "max_scale": 1.2, "color": "#5A4632" }
+      ],
+      "landmarks": [
+        { "kind": "signpost", "pos": [3, 14], "yaw": -18, "scale": 1.0, "color": "#6B5539" },
+        { "kind": "campfire", "pos": [-5, 24], "yaw": 0, "scale": 1.0, "color": "#6E6558" },
+        { "kind": "ruin_wall", "pos": [30, -12], "yaw": 15, "scale": 1.3, "color": "#8C8676" },
+        { "kind": "ruin_wall", "pos": [35, -16], "yaw": -35, "scale": 1.1, "color": "#8C8676" },
+        { "kind": "arch", "pos": [0, -21], "yaw": 0, "scale": 1.4, "color": "#7E7869" }
+      ],
+      "blockers": [
+        { "rect": [-44, -34, -42, 34] },
+        { "rect": [42, -34, 44, 34] },
+        { "rect": [-44, -34, 44, -32] },
+        { "rect": [-44, 32, 44, 34] },
+        { "rect": [-42, 4, -6, 6], "_nota": "linha de árvores, passagem em x > -6" },
+        { "rect": [8, 6, 42, 8], "_nota": "cerca viva a leste" }
+      ],
+      "npcs": [
+        {
+          "id": "guide_maren", "name": "Maren", "role": "guide", "pos": [-2, 22], "yaw": 180,
+          "colors": { "skin": "#C99B72", "hair": "#3B2E23", "outfit": "#4F6E8A", "trim": "#C9B173" },
+          "lines": [
+            "Você conseguiu sair de casa. Já é alguma coisa.",
+            "A Juncal é sossegada, mas a mata atrás de nós não é. Mantenha sua criatura por perto.",
+            "Suba pro norte quando estiver pronto. É no bosque velho que treinador aprende de verdade."
+          ]
+        },
+        {
+          "id": "healer_gv", "name": "Nara", "role": "healer", "pos": [-8, 24], "yaw": 130,
+          "colors": { "skin": "#7A5638", "hair": "#3A332C", "outfit": "#4A6B5A", "trim": "#D9C98A" },
+          "lines": [
+            "Aguento o acampamento aberto até anoitecer. Depois disso, desço.",
+            "Se estiverem no limite, descanse antes de subir para o bosque."
+          ],
+          "heals": true
+        }
+      ],
+      "heal_points": [
+        { "id": "gv_camp", "name": "Acampamento do Viajante", "pos": [-5, 24] }
+      ],
+      "gates": [
+        {
+          "id": "gv_to_vila", "name": "Descida para a Vila", "pos": [0, 31], "to_map": "vila_juncal",
+          "to_spawn": "from_greenvale",
+          "requires": {},
+          "color": "#7E7869"
+        },
+        {
+          "id": "gv_to_ashen", "name": "Passo da Serra", "pos": [39, -25], "to_map": "ashen_ridge",
+          "to_spawn": "from_greenvale",
+          "requires": { "boss_defeated": "greenvale" },
+          "locked_message": "O vigia do passo não sai do lugar enquanto o Espinho Ancião não for contido.",
+          "color": "#7E7869"
+        }
+      ],
+      "zones": [
+        {
+          "id": "gv_meadow", "name": "Campina Ensolarada", "rect": [8, 10, 40, 30],
+          "level_range": [2, 4], "max_alive": 4, "respawn_seconds": 22,
+          "table": [
+            { "species": "mossling", "weight": 45 },
+            { "species": "dewkit", "weight": 30 },
+            { "species": "thornbark", "weight": 15 },
+            { "species": "duskmoth", "weight": 10 }
+          ]
+        },
+        {
+          "id": "gv_brook", "name": "Riacho dos Juncos", "rect": [-40, -18, -12, 4],
+          "level_range": [3, 5], "max_alive": 4, "respawn_seconds": 24,
+          "table": [
+            { "species": "dewkit", "weight": 45 },
+            { "species": "mossling", "weight": 25 },
+            { "species": "pebblit", "weight": 20 },
+            { "species": "brookwarden", "weight": 10 }
+          ]
+        },
+        {
+          "id": "gv_grove", "name": "Bosque Antigo", "rect": [-40, -20, -8, 4],
+          "level_range": [5, 7], "max_alive": 3, "respawn_seconds": 28,
+          "table": [
+            { "species": "mossling", "weight": 35 },
+            { "species": "thornbark", "weight": 30 },
+            { "species": "duskmoth", "weight": 22 },
+            { "species": "galewisp", "weight": 13 }
+          ]
+        },
+        {
+          "id": "gv_ruins", "name": "Ruínas Musgosas", "rect": [24, -20, 40, -6],
+          "level_range": [6, 8], "max_alive": 3, "respawn_seconds": 30,
+          "table": [
+            { "species": "pebblit", "weight": 40 },
+            { "species": "duskmoth", "weight": 30 },
+            { "species": "thornbark", "weight": 20 },
+            { "species": "galewisp", "weight": 10 }
+          ]
+        },
+        {
+          "id": "gv_thicket", "name": "Matagal do Norte", "rect": [-30, -32, 16, -22],
+          "level_range": [7, 9], "max_alive": 4, "respawn_seconds": 26,
+          "table": [
+            { "species": "thornbark", "weight": 32 },
+            { "species": "duskmoth", "weight": 28 },
+            { "species": "brookwarden", "weight": 18 },
+            { "species": "galewisp", "weight": 17 },
+            { "species": "lumenstag", "weight": 5 }
+          ]
+        },
+        {
+          "id": "gv_glade", "name": "Clareira da Alvorada", "rect": [8, -18, 20, -2],
+          "level_range": [8, 10], "max_alive": 2, "respawn_seconds": 45,
+          "table": [
+            { "species": "brookwarden", "weight": 45 },
+            { "species": "galewisp", "weight": 35 },
+            { "species": "lumenstag", "weight": 20 },
+            { "species": "dinomight", "weight": 14 }
+          ]
+        }
+      ],
+      "mini_boss": {
+        "id": "gv_mini", "species": "grovekeeper", "name": "Guardabosque", "level": 9,
+        "pos": [32, -14], "escorts": [{ "species": "mossling", "level": 7 }],
+        "intro": "Alguma coisa pesada se move no meio das ruínas."
+      },
+      "boss": {
+        "id": "gv_boss", "species": "elderthorn", "name": "Espinho Ancião", "level": 12,
+        "pos": [0, -28], "escorts": [{ "species": "thornbark", "level": 10 }, { "species": "duskmoth", "level": 10 }],
+        "requires": { "mini_boss_defeated": "greenvale" },
+        "intro": "A clareira fica em silêncio. A coisa mais velha de Valverde acordou.",
+        "rewards": { "gold": 800, "player_xp": 600, "items": { "ridge_pass_token": 1, "greater_binding_core": 3 } }
+      }
+    },
+
+    {
+      "id": "ashen_ridge",
+      "name": "Serra Cinérea",
+      "subtitle": "Encostas secas acima das fumarolas",
+      "order": 3,
+      "unlocked_from_start": false,
+      "recommended_level": 10,
+      "bounds": { "min_x": -42, "max_x": 42, "min_z": -34, "max_z": 34 },
+      "ambient": {
+        "ground_color": "#5E5145",
+        "sky_top": "#8E7A73",
+        "sky_horizon": "#D9BBA0",
+        "sun_color": "#FFE0B8",
+        "sun_energy": 1.0,
+        "sun_pitch": -46,
+        "sun_yaw": 24,
+        "fog_enabled": true,
+        "fog_color": "#B79A88",
+        "fog_density": 0.006,
+        "ambient_energy": 0.5
+      },
+      "spawn_points": {
+        "start": [-36, 26],
+        "from_greenvale": [-36, 26],
+        "heal_ar_shelter": [-28, 20]
+      },
+      "terrain": [
+        { "kind": "path", "rect": [-40, 20, -10, 26], "color": "#7C6F5E" },
+        { "kind": "path", "rect": [-14, -8, -8, 26],  "color": "#7C6F5E" },
+        { "kind": "path", "rect": [-14, -12, 20, -6], "color": "#7C6F5E" },
+        { "kind": "path", "rect": [16, -30, 22, -10], "color": "#6E6152" },
+        { "kind": "rock", "rect": [-40, 4, -16, 22],  "color": "#6A6154" },
+        { "kind": "rock", "rect": [-6, 6, 40, 30],    "color": "#635A4E" },
+        { "kind": "rock", "rect": [22, -32, 40, -8],  "color": "#5A5145" },
+        { "kind": "ash",  "rect": [-40, -32, -14, -2], "color": "#4B443E" },
+        { "kind": "ash",  "rect": [-10, -32, 14, -14], "color": "#453F3A" },
+        { "kind": "lava", "rect": [-8, -30, -2, -18],  "color": "#C4552A" },
+        { "kind": "lava", "rect": [4, -26, 10, -16],   "color": "#C4552A" },
+        { "kind": "sand", "rect": [-34, 16, -20, 28],  "color": "#8E7C60" }
+      ],
+      "clearings": [
+        { "rect": [-40, 16, -14, 30] },
+        { "rect": [-16, -14, 22, -4] },
+        { "rect": [-18, -10, -6, 28] },
+        { "rect": [12, -34, 26, -6] },
+        { "rect": [24, -14, 40, 2] }
+      ],
+      "scatter": [
+        { "kind": "rock", "rect": [-40, 2, -14, 24],  "count": 22, "seed": 201, "min_scale": 0.8, "max_scale": 2.0, "color": "#6E6558" },
+        { "kind": "rock", "rect": [-4, 4, 40, 30],    "count": 28, "seed": 202, "min_scale": 0.9, "max_scale": 2.4, "color": "#665D50" },
+        { "kind": "rock", "rect": [20, -32, 40, -6],  "count": 20, "seed": 203, "min_scale": 1.0, "max_scale": 2.6, "color": "#5C5449" },
+        { "kind": "ashtree", "rect": [-40, -30, -12, 0], "count": 16, "seed": 204, "min_scale": 0.9, "max_scale": 1.6, "color": "#4A443C", "trunk_color": "#3A342E" },
+        { "kind": "crystal", "rect": [-40, -30, 16, -12], "count": 18, "seed": 205, "min_scale": 0.7, "max_scale": 1.5, "color": "#B05A34" },
+        { "kind": "crystal", "rect": [22, -30, 40, -8], "count": 12, "seed": 206, "min_scale": 0.8, "max_scale": 1.8, "color": "#8E6BB0" },
+        { "kind": "vent", "rect": [-38, -30, 18, -6], "count": 14, "seed": 207, "min_scale": 0.7, "max_scale": 1.3, "color": "#3A322C", "collides": false },
+        { "kind": "bush", "rect": [-40, 6, 38, 30],   "count": 18, "seed": 208, "min_scale": 0.5, "max_scale": 0.9, "color": "#6B6440", "collides": false }
+      ],
+      "landmarks": [
+        { "kind": "hut", "pos": [-30, 22], "yaw": -25, "scale": 1.0, "color": "#7A6A55", "roof_color": "#5E4A3C" },
+        { "kind": "signpost", "pos": [-13, 20], "yaw": 20, "scale": 1.0, "color": "#5E5245" },
+        { "kind": "pillar", "pos": [18, -8], "yaw": 0, "scale": 1.4, "color": "#6E6558" },
+        { "kind": "pillar", "pos": [24, -8], "yaw": 0, "scale": 1.4, "color": "#6E6558" },
+        { "kind": "arch", "pos": [19, -22], "yaw": 0, "scale": 1.6, "color": "#5A5145" },
+        { "kind": "ruin_wall", "pos": [30, -18], "yaw": 25, "scale": 1.4, "color": "#6B6255" }
+      ],
+      "blockers": [
+        { "rect": [-42, -34, -40, 34] },
+        { "rect": [40, -34, 42, 34] },
+        { "rect": [-42, -34, 42, -32] },
+        { "rect": [-42, 32, 42, 34] },
+        { "rect": [-16, 26, 40, 28], "_nota": "linha de penhasco superior" },
+        { "rect": [-40, -6, -18, -4], "_nota": "crista de cascalho, passagem a leste" }
+      ],
+      "npcs": [
+        {
+          "id": "warden_kel", "name": "Kel", "role": "guide", "pos": [-33, 25], "yaw": 120,
+          "colors": { "skin": "#A87A52", "hair": "#4A4038", "outfit": "#5A4A44", "trim": "#C0552F" },
+          "lines": [
+            "Valverde me manda um treinador por estação. A maioria desce de volta.",
+            "As fumarolas queimam mais perto do arco. Não leve nada de Natureza lá para cima."
+          ]
+        },
+        {
+          "id": "healer_sura", "name": "Sura", "role": "healer", "pos": [-28, 19], "yaw": 60,
+          "colors": { "skin": "#6E4E38", "hair": "#2A2622", "outfit": "#4A5A6B", "trim": "#D9C98A" },
+          "lines": ["O abrigo está aberto. Aqueça elas antes da subida."],
+          "heals": true
+        }
+      ],
+      "heal_points": [
+        { "id": "ar_shelter", "name": "Abrigo da Serra", "pos": [-28, 20] }
+      ],
+      "gates": [
+        {
+          "id": "ar_to_greenvale", "name": "Descida para Valverde", "pos": [-39, 26], "to_map": "greenvale",
+          "to_spawn": "from_ashen_ridge",
+          "requires": {},
+          "color": "#6E6558"
+        }
+      ],
+      "zones": [
+        {
+          "id": "ar_scree", "name": "Encosta de Cascalho", "rect": [-40, 2, -16, 22],
+          "level_range": [10, 12], "max_alive": 4, "respawn_seconds": 24,
+          "table": [
+            { "species": "pebblit", "weight": 40 },
+            { "species": "cindermite", "weight": 32 },
+            { "species": "duskmoth", "weight": 18 },
+            { "species": "galewisp", "weight": 10 }
+          ]
+        },
+        {
+          "id": "ar_ashfields", "name": "Campos de Cinza", "rect": [-40, -30, -14, -2],
+          "level_range": [12, 14], "max_alive": 4, "respawn_seconds": 26,
+          "table": [
+            { "species": "cindermite", "weight": 42 },
+            { "species": "duskmoth", "weight": 26 },
+            { "species": "emberfang", "weight": 20 },
+            { "species": "slateback", "weight": 12 }
+          ]
+        },
+        {
+          "id": "ar_vents", "name": "Fumarolas", "rect": [-10, -30, 14, -14],
+          "level_range": [13, 15], "max_alive": 3, "respawn_seconds": 30,
+          "table": [
+            { "species": "cindermite", "weight": 34 },
+            { "species": "emberfang", "weight": 30 },
+            { "species": "ashvane", "weight": 20 },
+            { "species": "slateback", "weight": 16 }
+          ]
+        },
+        {
+          "id": "ar_upper", "name": "Terraço Alto", "rect": [-4, 6, 38, 26],
+          "level_range": [14, 16], "max_alive": 4, "respawn_seconds": 28,
+          "table": [
+            { "species": "slateback", "weight": 32 },
+            { "species": "galewisp", "weight": 28 },
+            { "species": "pebblit", "weight": 22 },
+            { "species": "ashvane", "weight": 18 }
+          ]
+        },
+        {
+          "id": "ar_caverns", "name": "Gruta de Cristal", "rect": [22, -30, 40, -8],
+          "level_range": [15, 18], "max_alive": 3, "respawn_seconds": 34,
+          "table": [
+            { "species": "slateback", "weight": 34 },
+            { "species": "ashvane", "weight": 28 },
+            { "species": "emberfang", "weight": 22 },
+            { "species": "lumenstag", "weight": 16 },
+            { "species": "dinomight", "weight": 18 }
+          ]
+        }
+      ],
+      "mini_boss": {
+        "id": "ar_mini", "species": "cragmaw", "name": "Penhafauce", "level": 16,
+        "pos": [30, -20], "escorts": [{ "species": "pebblit", "level": 14 }, { "species": "slateback", "level": 14 }],
+        "intro": "O cascalho desliza. Alguma coisa embaixo dele não quer ser pisada."
+      },
+      "boss": {
+        "id": "ar_boss", "species": "pyroclast", "name": "Piroclasto", "level": 20,
+        "pos": [19, -28], "escorts": [{ "species": "cindermite", "level": 17 }, { "species": "ashvane", "level": 17 }],
+        "requires": { "mini_boss_defeated": "ashen_ridge" },
+        "intro": "O calor desce pelo arco numa onda só.",
+        "rewards": { "gold": 2400, "player_xp": 2000, "items": { "greater_binding_core": 6, "ember_ash": 15 } }
+      }
+    }
+  ]
+}

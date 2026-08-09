@@ -1,0 +1,56 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="CapMonster"
+config/description="Monster Idle RPG - colecione, treine e evolua criaturas de éter."
+config/version="0.1.0"
+run/main_scene="res://scenes/main/Boot.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://assets/ui/icone.png"
+
+[autoload]
+
+GameLog="*res://scripts/core/GameLog.gd"
+InputActions="*res://scripts/core/InputSetup.gd"
+DataManager="*res://scripts/managers/DataManager.gd"
+SaveManager="*res://scripts/managers/SaveManager.gd"
+Renderizador="*res://scripts/core/Renderizador.gd"
+GameManager="*res://scripts/managers/GameManager.gd"
+AudioManager="*res://scripts/managers/AudioManager.gd"
+QuestManager="*res://scripts/managers/QuestManager.gd"
+IdleManager="*res://scripts/managers/IdleManager.gd"
+SceneFlow="*res://scripts/managers/SceneFlow.gd"
+Notify="*res://scripts/managers/Notify.gd"
+Rede="*res://scripts/net/Rede.gd"
+MundoRede="*res://scripts/net/MundoRede.gd"
+Chat="*res://scripts/net/Chat.gd"
+
+[debug]
+
+file_logging/enable_file_logging=true
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+3d/default_gravity=0.0
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2

@@ -1,0 +1,19 @@
+# Godot: cache de importação, regerado sozinho na primeira abertura.
+.godot/
+.import/
+*.translation
+
+# Saída de build. As versões vão nas Releases do GitHub, não no repositório.
+/build/
+/export/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Ferramentas Python
+__pycache__/
+*.pyc

@@ -1,0 +1,95 @@
+{
+  "_comentario": "Itens. 'category' = capture | consumable | material | quest. Os 'id' são chaves internas e ficam em inglês.",
+  "items": [
+    {
+      "id": "binding_core",
+      "name": "Núcleo de Vínculo",
+      "category": "capture",
+      "description": "Uma casca oca de resina semeada com éter. Racha em volta de uma criatura enfraquecida e a prende.",
+      "capture_power": 1.0,
+      "stackable": true,
+      "max_stack": 99,
+      "value": 60,
+      "color": "#7FA8C4"
+    },
+    {
+      "id": "greater_binding_core",
+      "name": "Núcleo de Vínculo Maior",
+      "category": "capture",
+      "description": "Um núcleo mais denso. Melhora bastante as chances contra criaturas teimosas.",
+      "capture_power": 1.8,
+      "stackable": true,
+      "max_stack": 99,
+      "value": 220,
+      "color": "#C9922F"
+    },
+    {
+      "id": "vital_draught",
+      "name": "Poção Vital",
+      "category": "consumable",
+      "description": "Restaura 40% da vida máxima de uma criatura.",
+      "effect": "heal_percent",
+      "effect_value": 0.4,
+      "stackable": true,
+      "max_stack": 99,
+      "value": 45,
+      "color": "#C4574F"
+    },
+    {
+      "id": "field_ration",
+      "name": "Ração de Campo",
+      "category": "consumable",
+      "description": "Restaura 15% de vida da equipe ativa inteira.",
+      "effect": "heal_team_percent",
+      "effect_value": 0.15,
+      "stackable": true,
+      "max_stack": 99,
+      "value": 90,
+      "color": "#B9A26B"
+    },
+    {
+      "id": "aether_shard",
+      "name": "Fragmento de Éter",
+      "category": "material",
+      "description": "Resíduo comum deixado por criaturas derrotadas. Usado em fabricação.",
+      "stackable": true,
+      "max_stack": 999,
+      "value": 12,
+      "color": "#8FA8B8"
+    },
+    {
+      "id": "verdant_fiber",
+      "name": "Fibra Verdejante",
+      "category": "material",
+      "description": "Tendão vegetal resistente, colhido nos arredores de Valverde.",
+      "stackable": true,
+      "max_stack": 999,
+      "value": 18,
+      "color": "#6FA84A"
+    },
+    {
+      "id": "ember_ash",
+      "name": "Cinza Ardente",
+      "category": "material",
+      "description": "Ainda morna. Recolhida nas encostas da Serra Cinérea.",
+      "stackable": true,
+      "max_stack": 999,
+      "value": 30,
+      "color": "#C0552F"
+    },
+    {
+      "id": "ridge_pass_token",
+      "name": "Selo do Passo da Serra",
+      "category": "quest",
+      "description": "Prova de que o Espinho Ancião foi contido. O vigia do passo não aceita outra coisa.",
+      "stackable": false,
+      "max_stack": 1,
+      "value": 0,
+      "color": "#C9B173"
+    }
+  ],
+  "starting_inventory": {
+    "binding_core": 8,
+    "vital_draught": 3
+  }
+}

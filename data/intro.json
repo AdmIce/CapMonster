@@ -1,0 +1,41 @@
+{
+  "_comentario": [
+    "Roteiro da abertura. A cena Intro.tscn lê tudo daqui - trocar o texto do professor,",
+    "o nome dele ou a ordem das falas é edição de JSON, não de código.",
+    "{criatura} nas falas é substituído pelo nome da criatura escolhida."
+  ],
+  "professor": {
+    "id": "prof_elir",
+    "name": "Professor Elir",
+    "titulo": "Pesquisador de campo da Vila Juncal",
+    "colors": { "skin": "#E0BC98", "hair": "#8C4B32", "outfit": "#3F5F58", "trim": "#9AA3AD" }
+  },
+  "cenario": {
+    "nome": "Posto de pesquisa",
+    "cor_chao": "#3E4A3C",
+    "cor_parede": "#2A3230",
+    "cor_madeira": "#5A4632",
+    "sky_top": "#2A3A46",
+    "sky_horizon": "#6E6A58",
+    "ambient_energy": 0.42
+  },
+  "falas_abertura": [
+    "Chegou. Fecha a porta atrás de você, o vento de fora derruba minhas anotações.",
+    "Meu nome é Elir. Passo os dias catalogando o que vive nos arredores desta vila.",
+    "O que você vai ver lá fora não são animais comuns. São criaturas de éter: matéria viva que a região exala e que endurece em corpo, temperamento e vontade própria.",
+    "Elas não obedecem por medo. Elas se vinculam. E só se vinculam a quem consegue segurá-las quando já estão cansadas de brigar.",
+    "É pra isso que serve isto aqui.",
+    "Núcleo de Vínculo. Resina oca semeada com éter. Você desgasta a criatura numa luta honesta, arremessa o núcleo, e ele fecha em volta dela.",
+    "Sete elementos, cinco faixas de raridade, e uma regra que ninguém quebra: você anda com três. Só três. O resto fica na sua coleção esperando a vez.",
+    "Valverde é o lugar mais tranquilo daqui até a serra. Ainda assim tem algo velho dormindo no fundo daquela mata, e um dia você vai ter que encarar.",
+    "Mas não hoje. Hoje você só precisa escolher com quem vai começar."
+  ],
+  "fala_escolha": "Três delas foram criadas aqui. Chegue perto, olhe direito. A que você levar vai te manter vivo nas próximas semanas.",
+  "fala_confirmacao": "{criatura}. Boa escolha - e cuide bem dela, porque ela vai se lembrar de como você luta.",
+  "falas_encerramento": [
+    "Levei oito Núcleos de Vínculo e três Poções Vitais na sua mochila. É o que a vila consegue bancar.",
+    "Suba pro norte quando estiver pronto. Maren está no caminho e explica o resto melhor que eu.",
+    "Vai lá."
+  ],
+  "dica_final": "WASD para andar  ·  E para interagir  ·  Esc para o menu"
+}

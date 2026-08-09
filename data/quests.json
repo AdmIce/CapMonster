@@ -1,0 +1,57 @@
+{
+  "_comentario": [
+    "Missões. SITUAÇÃO: só dados na etapa 1 - o QuestManager entra na etapa 9.",
+    "objective.type = capture | defeat | team_size | player_level | defeat_named | reach_map"
+  ],
+  "quests": [
+    {
+      "id": "q_first_capture", "name": "Segure uma delas",
+      "description": "Enfraqueça uma criatura selvagem e prenda ela com um Núcleo de Vínculo.",
+      "auto_start": true, "map": "greenvale",
+      "objective": { "type": "capture", "count": 1 },
+      "rewards": { "gold": 150, "player_xp": 80, "items": { "binding_core": 5 } }
+    },
+    {
+      "id": "q_five_kills", "name": "Limpe a campina",
+      "description": "Derrote 5 criaturas selvagens nos arredores da Juncal.",
+      "auto_start": true, "map": "greenvale",
+      "objective": { "type": "defeat", "count": 5 },
+      "rewards": { "gold": 120, "player_xp": 70, "items": { "vital_draught": 2 } }
+    },
+    {
+      "id": "q_team_two", "name": "Não está sozinho",
+      "description": "Leve duas criaturas ao mesmo tempo na equipe.",
+      "requires": ["q_first_capture"], "map": "greenvale",
+      "objective": { "type": "team_size", "count": 2 },
+      "rewards": { "gold": 100, "player_xp": 60, "items": {} }
+    },
+    {
+      "id": "q_level_five", "name": "Valeu a caminhada",
+      "description": "Chegue ao nível 5 de treinador.",
+      "auto_start": true, "map": "greenvale",
+      "objective": { "type": "player_level", "count": 5 },
+      "rewards": { "gold": 250, "player_xp": 0, "items": { "greater_binding_core": 1 } }
+    },
+    {
+      "id": "q_gv_mini", "name": "A coisa nas ruínas",
+      "description": "Expulse o Guardabosque das Ruínas Musgosas.",
+      "requires": ["q_five_kills"], "map": "greenvale",
+      "objective": { "type": "defeat_named", "target": "gv_mini", "count": 1 },
+      "rewards": { "gold": 400, "player_xp": 300, "items": { "vital_draught": 3 } }
+    },
+    {
+      "id": "q_gv_boss", "name": "Espinho Ancião",
+      "description": "Empurre o Espinho Ancião de volta para a mata funda e abra o Passo da Serra.",
+      "requires": ["q_gv_mini"], "map": "greenvale",
+      "objective": { "type": "defeat_named", "target": "gv_boss", "count": 1 },
+      "rewards": { "gold": 800, "player_xp": 600, "items": { "ridge_pass_token": 1 } }
+    },
+    {
+      "id": "q_reach_ridge", "name": "Acima da linha das árvores",
+      "description": "Atravesse o Passo da Serra e entre na Serra Cinérea.",
+      "requires": ["q_gv_boss"], "map": "greenvale",
+      "objective": { "type": "reach_map", "target": "ashen_ridge", "count": 1 },
+      "rewards": { "gold": 300, "player_xp": 250, "items": { "field_ration": 3 } }
+    }
+  ]
+}

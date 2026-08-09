@@ -1,0 +1,39 @@
+{
+  "_comment": "All progression curves live here. Formula: xp_to_next(level) = floor(base_xp * level^exponent).",
+  "player": {
+    "max_level": 20,
+    "base_xp": 40.0,
+    "exponent": 1.6
+  },
+  "creature": {
+    "max_level": 30,
+    "base_xp": 28.0,
+    "exponent": 1.5
+  },
+  "creature_stats": {
+    "_comment": "stat = round(base * (1 + growth * (level - 1)) * rarity_multiplier)",
+    "growth_per_level": 0.075,
+    "hp_growth_per_level": 0.095
+  },
+  "combat": {
+    "critical_chance": 0.05,
+    "critical_multiplier": 1.6,
+    "random_variation": 0.12,
+    "defense_softening": 55.0,
+    "minimum_damage": 1
+  },
+  "capture": {
+    "_comment": "chance = base_rate * hp_factor * rarity_modifier * item_power, clamped.",
+    "hp_factor_min": 0.35,
+    "hp_factor_max": 1.75,
+    "min_chance": 0.02,
+    "max_chance": 0.95
+  },
+  "idle": {
+    "max_offline_hours": 8.0,
+    "gold_per_hour": 120.0,
+    "player_xp_per_hour": 55.0,
+    "creature_xp_per_hour": 70.0,
+    "material_chance_per_hour": 0.45
+  }
+}

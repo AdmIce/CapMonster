@@ -1,0 +1,30 @@
+{
+  "_comentario": "Faixas de raridade. 'order' define a ordenação; os multiplicadores alimentam atributos, chance de captura e peso de spawn.",
+  "rarities": [
+    {
+      "id": "common", "name": "Comum", "order": 0, "color": "#9AA3AD",
+      "stat_multiplier": 1.0, "capture_modifier": 1.0, "spawn_weight_modifier": 1.0,
+      "xp_yield_multiplier": 1.0
+    },
+    {
+      "id": "uncommon", "name": "Incomum", "order": 1, "color": "#6FA84A",
+      "stat_multiplier": 1.08, "capture_modifier": 0.82, "spawn_weight_modifier": 0.8,
+      "xp_yield_multiplier": 1.25
+    },
+    {
+      "id": "rare", "name": "Raro", "order": 2, "color": "#4A8FB8",
+      "stat_multiplier": 1.18, "capture_modifier": 0.58, "spawn_weight_modifier": 0.5,
+      "xp_yield_multiplier": 1.6
+    },
+    {
+      "id": "epic", "name": "Épico", "order": 3, "color": "#8B79C4",
+      "stat_multiplier": 1.32, "capture_modifier": 0.34, "spawn_weight_modifier": 0.25,
+      "xp_yield_multiplier": 2.2
+    },
+    {
+      "id": "legendary", "name": "Lendário", "order": 4, "color": "#C9922F",
+      "stat_multiplier": 1.55, "capture_modifier": 0.14, "spawn_weight_modifier": 0.05,
+      "xp_yield_multiplier": 3.5
+    }
+  ]
+}

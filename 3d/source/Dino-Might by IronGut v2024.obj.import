@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://ceqwwpg3iofbf"
+path="res://.godot/imported/Dino-Might by IronGut v2024.obj-073a729624868f24b019d86887a62a81.mesh"
+
+[deps]
+
+files=["res://.godot/imported/Dino-Might by IronGut v2024.obj-073a729624868f24b019d86887a62a81.mesh"]
+
+source_file="res://3d/source/Dino-Might by IronGut v2024.obj"
+dest_files=["res://.godot/imported/Dino-Might by IronGut v2024.obj-073a729624868f24b019d86887a62a81.mesh", "res://.godot/imported/Dino-Might by IronGut v2024.obj-073a729624868f24b019d86887a62a81.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

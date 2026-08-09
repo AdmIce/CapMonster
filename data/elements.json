@@ -1,0 +1,25 @@
+{
+  "_comentario": "Elementos e a tabela de vantagens. Os 'id' são chaves internas e ficam em inglês; o que o jogador lê é o 'name'.",
+  "default_multiplier": 1.0,
+  "intentional_mutual_pairs": [["shadow", "light"]],
+  "strong_multiplier": 1.5,
+  "weak_multiplier": 0.5,
+  "elements": [
+    { "id": "nature", "name": "Natureza",   "color": "#6FA84A", "glyph": "folha" },
+    { "id": "flame",  "name": "Chama",      "color": "#D2603A", "glyph": "chama" },
+    { "id": "aqua",   "name": "Água",       "color": "#3E7FA6", "glyph": "gota" },
+    { "id": "stone",  "name": "Pedra",      "color": "#8A7B63", "glyph": "lasca" },
+    { "id": "storm",  "name": "Tempestade", "color": "#7E6FB0", "glyph": "raio" },
+    { "id": "shadow", "name": "Sombra",     "color": "#4A4457", "glyph": "veu" },
+    { "id": "light",  "name": "Luz",        "color": "#C9B173", "glyph": "sol" }
+  ],
+  "chart": {
+    "nature": { "aqua": 1.5, "stone": 1.5, "flame": 0.5, "storm": 0.5 },
+    "flame":  { "nature": 1.5, "storm": 1.5, "aqua": 0.5, "stone": 0.5 },
+    "aqua":   { "flame": 1.5, "stone": 1.5, "nature": 0.5, "storm": 0.5 },
+    "stone":  { "storm": 1.5, "flame": 1.5, "nature": 0.5, "aqua": 0.5 },
+    "storm":  { "aqua": 1.5, "nature": 1.5, "stone": 0.5, "flame": 0.5 },
+    "shadow": { "light": 1.5, "shadow": 0.5 },
+    "light":  { "shadow": 1.5, "light": 0.5 }
+  }
+}
