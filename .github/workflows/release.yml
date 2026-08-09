@@ -50,3 +50,62 @@ jobs:
           files: |
             build/windows/CapMonster.exe
             build/windows/CapMonster.pck
+
+  # Avisa a galera no Discord. Roda depois e em separado de propósito: se o
+  # Discord estiver fora do ar, a release já está publicada e o jogo já se
+  # atualiza sozinho -- o aviso é conveniência, não parte da entrega.
+  discord:
+    needs: windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Avisar no Discord
+        env:
+          # Segredo do repositório (Settings > Secrets and variables > Actions).
+          # A URL do webhook é uma senha: quem tiver ela posta no canal como se
+          # fosse o dono. Por isso ela nunca aparece neste arquivo, que é público.
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          VERSAO: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK}" ]; then
+            echo "DISCORD_WEBHOOK nao esta configurado; publicacao segue sem aviso."
+            exit 0
+          fi
+
+          PAGINA="https://github.com/${REPO}/releases/tag/${VERSAO}"
+
+          # As notas são as que o GitHub gera a partir dos commits. Se a busca
+          # falhar (rodou pelo botao, sem tag), o aviso sai só com o link em vez
+          # de a etapa inteira quebrar.
+          NOTAS=$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${VERSAO}" \
+            | jq -r '.body // ""' || echo "")
+          if [ -z "${NOTAS}" ]; then
+            NOTAS="Detalhes na pagina da versao."
+          fi
+          # O limite do Discord para a descricao e 4096; cortar antes evita a
+          # mensagem inteira ser recusada por causa de um changelog longo.
+          NOTAS=$(printf '%s' "${NOTAS}" | head -c 3500)
+
+          # jq monta o JSON para que aspas e quebras de linha das notas nao
+          # quebrem o payload.
+          jq -n \
+            --arg titulo "CapMonster ${VERSAO} no ar" \
+            --arg url "${PAGINA}" \
+            --arg notas "${NOTAS}" \
+            '{
+              username: "CapMonster",
+              embeds: [{
+                title: $titulo,
+                url: $url,
+                description: $notas,
+                color: 13210159,
+                footer: { text: "Abra o jogo no menu e ele se atualiza sozinho." }
+              }]
+            }' > payload.json
+
+          curl -sS -f -X POST -H "Content-Type: application/json" \
+            -d @payload.json "${WEBHOOK}" && echo "Aviso enviado."
