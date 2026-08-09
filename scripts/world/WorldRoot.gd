@@ -10,6 +10,9 @@ var map_data: Dictionary = {}
 
 var player: PlayerController = null
 var camera_rig: CameraRig = null
+## O aviso do Alt sai uma vez por mapa, na primeira vez que uma câmera de mouse
+## entra. Repetir a cada troca vira ruído.
+var _avisou_do_cursor: bool = false
 var spawner: SpawnManager = null
 var autopilot: AutoPilot = null
 var companion: CompanionCreature = null
@@ -496,6 +499,14 @@ func _ao_mudar_camera(_novo: CameraRig.Modo) -> void:
 	# miolo do modelo, que é um borrão que tapa a tela inteira.
 	if player != null and player.avatar != null:
 		player.avatar.visible = not camera_rig.esconde_personagem()
+
+	# Avisar não é enfeite: o cursor sumir sem explicação é indistinguível de o
+	# jogo ter travado, e a HUD toda depende de clique. Só ao **entrar** num
+	# enquadramento de mouse, para não repetir a cada batalha.
+	if camera_rig.usa_mouse() and not _avisou_do_cursor:
+		_avisou_do_cursor = true
+		Notify.show_message("Segure Alt para soltar o cursor e usar a interface.")
+
 	_atualizar_mouse()
 
 
@@ -503,7 +514,9 @@ func _ao_mudar_camera(_novo: CameraRig.Modo) -> void:
 ## para clicar ou ler. Um painel aberto com o cursor preso é um painel que não
 ## dá para usar.
 func _atualizar_mouse() -> void:
-	var precisa := camera_rig != null and camera_rig.usa_mouse() and not _interface_na_frente()
+	var precisa := camera_rig != null and camera_rig.usa_mouse() \
+		and not _interface_na_frente() \
+		and not Input.is_action_pressed("cursor")
 	var desejado := Input.MOUSE_MODE_CAPTURED if precisa else Input.MOUSE_MODE_VISIBLE
 	if Input.mouse_mode != desejado:
 		Input.mouse_mode = desejado

@@ -43,6 +43,7 @@ Não há nada para compilar nem dependência para baixar.
 | `Ctrl` | Voando, descer (chegou ao chão, pousa) |
 | `C` | Trocar de câmera: de cima → terceira pessoa → sobre o ombro → primeira pessoa |
 | Mouse | Olhar, nas câmeras de ombro e de primeira pessoa |
+| `Alt` (segurando) | Soltar o cursor para clicar na interface, nessas duas câmeras |
 | `Esc` | Menu de pausa / fechar diálogo (também solta o mouse) |
 | `F5` | Salvamento rápido |
 | `F1` | Menu de debug (**só em build de debug**) |

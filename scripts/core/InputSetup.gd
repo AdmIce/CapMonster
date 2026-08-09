@@ -26,6 +26,10 @@ const DEFAULT_BINDINGS := {
 	"jump": [KEY_SPACE],
 	"cancel": [KEY_ESCAPE],
 	"descer": [KEY_CTRL],
+	# Solta o cursor enquanto está segurado, nas câmeras que prendem o mouse.
+	# Sem isto a HUD inteira (mochila, automático, chat) ficava inalcançável em
+	# primeira pessoa: o cursor sumia e não havia como clicar em nada.
+	"cursor": [KEY_ALT],
 	"chat": [KEY_ENTER, KEY_KP_ENTER],
 	"chat_comando": [KEY_SLASH],
 	"inventory": [KEY_I, KEY_TAB],

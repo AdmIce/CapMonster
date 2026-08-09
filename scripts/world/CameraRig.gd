@@ -18,8 +18,8 @@ extends Node3D
 ##   Primeira pessoa  dentro da cabeça, mouse no comando, corpo escondido.
 ##
 ## Os dois últimos capturam o mouse. Quem decide a hora de capturar e de soltar
-## é o WorldRoot, que é quem sabe se tem painel aberto — este nó só informa, em
-## `usa_mouse()`, que precisa dele.
+## é o WorldRoot, que é quem sabe se tem painel aberto e se o jogador está
+## segurando Alt — este nó só informa, em `usa_mouse()`, que precisa dele.
 ##
 ## As contas de limites assumem yaw = 0 (a tela aponta para -Z) e só valem no
 ## enquadramento de cima, o único que os usa.
@@ -69,7 +69,7 @@ const MODOS := {
 	Modo.OMBRO: {
 		"id": "ombro",
 		"rotulo": "Sobre o ombro",
-		"ajuda": "Perto e de lado, com o mouse no comando do olhar.",
+		"ajuda": "Perto e de lado, com o mouse no comando do olhar. Segure Alt para soltar o cursor.",
 		"ortografica": false, "limites": false, "mouse": true, "esconde": false,
 		# Medido na captura: a 3.1 m o personagem ocupava 45% da altura da tela e
 		# tapava o que vinha pela esquerda. A 3.9 ele ocupa uns 35% e ainda é uma
@@ -85,7 +85,7 @@ const MODOS := {
 	Modo.PRIMEIRA_PESSOA: {
 		"id": "primeira_pessoa",
 		"rotulo": "Primeira pessoa",
-		"ajuda": "Pelos olhos do personagem. O mouse olha, o corpo some.",
+		"ajuda": "Pelos olhos do personagem. O mouse olha e o corpo some. Segure Alt para soltar o cursor.",
 		"ortografica": false, "limites": false, "mouse": true, "esconde": true,
 		"distancia": 0.0, "altura": 1.58, "lateral": 0.0, "pitch": 0.0, "fov": 75.0,
 		"pitch_min": -80.0, "pitch_max": 80.0,
