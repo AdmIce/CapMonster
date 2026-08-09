@@ -34,6 +34,7 @@ Notify="*res://scripts/managers/Notify.gd"
 Rede="*res://scripts/net/Rede.gd"
 MundoRede="*res://scripts/net/MundoRede.gd"
 Chat="*res://scripts/net/Chat.gd"
+Ficha="*res://scripts/net/Ficha.gd"
 
 [debug]
 

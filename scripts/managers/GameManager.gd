@@ -11,6 +11,10 @@ signal session_ended()
 signal starter_chosen(creature: CreatureData)
 signal map_changed(map_id: String, spawn_point: String)
 
+## Verdadeiro quando este processo é um servidor dedicado: sem jogador local,
+## sem câmera e sem interface. O mundo roda só pela regra.
+var modo_servidor: bool = false
+
 var player: PlayerData = null
 var is_in_session: bool = false
 ## Recompensa offline é paga uma vez por sessão, não a cada troca de mapa.

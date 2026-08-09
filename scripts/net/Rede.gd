@@ -73,7 +73,11 @@ func hospedar(porta: int = PORTA_PADRAO) -> bool:
 	multiplayer.multiplayer_peer = peer
 	estado = Estado.HOSPEDANDO
 	erro = ""
-	jogadores[meu_id()] = _meu_cartao()
+	# Um servidor dedicado não é jogador: registrá-lo faria os clientes
+	# desenharem um boneco parado no meio do mapa e o chat anunciar a entrada de
+	# alguém que não existe.
+	if not GameManager.modo_servidor:
+		jogadores[meu_id()] = _meu_cartao()
 	GameLog.info(GameLog.Channel.SYSTEM, "Rede: hospedando na porta %d." % porta)
 	estado_mudou.emit()
 	return true
@@ -113,7 +117,9 @@ func desligar() -> void:
 
 func _ao_conectar_peer(id: int) -> void:
 	# Quem chegou ainda não sabe quem somos, e nós ainda não sabemos quem é ele.
-	# Os dois lados se apresentam; a resposta chega no _receber_cartao.
+	# Os dois lados se apresentam; a resposta chega no próprio _apresentar.
+	if GameManager.modo_servidor:
+		return   # servidor dedicado não tem personagem para apresentar
 	_apresentar.rpc_id(id, _meu_cartao())
 
 
@@ -175,7 +181,8 @@ func _apresentar(cartao: Dictionary) -> void:
 	if not novo:
 		return
 	GameLog.info(GameLog.Channel.SYSTEM, "Rede: %s (peer %d) está online." % [jogadores[id]["nome"], id])
-	_apresentar.rpc_id(id, _meu_cartao())
+	if not GameManager.modo_servidor:
+		_apresentar.rpc_id(id, _meu_cartao())
 	jogador_entrou.emit(id, jogadores[id])
 	estado_mudou.emit()
 

@@ -1,0 +1,275 @@
+extends Node
+## Autoridade sobre o progresso do jogador: ouro, itens, XP e coleção.
+##
+## Mesmo princípio das outras camadas — **um caminho de código, duas
+## autoridades**. Nada no jogo altera ouro ou inventário direto: tudo passa por
+## `pedir()`. Jogando sozinho, o próprio processo é o dono e a mudança acontece
+## no mesmo quadro; numa partida, o cliente manda a intenção e o dono decide.
+##
+## O que isso conserta: até aqui, comprar um item tirava ouro na máquina de quem
+## clicou. Um cliente adulterado se dava ouro infinito e o servidor nem ficava
+## sabendo. Agora o servidor é quem tem a ficha, e o cliente só recebe o
+## resultado.
+##
+## **A ficha mora no servidor.** Quando você entra no mundo de alguém, o seu
+## personagem daquele mundo fica guardado lá, em `user://mundo/<nome>.json` —
+## como num servidor privado de qualquer jogo online. O seu save de um jogador só
+## continua sendo seu e separado; são dois personagens, e isso é de propósito.
+##
+## A intenção é genérica (`pedir(acao, argumentos)`) em vez de um RPC por ação
+## porque a lista de ações vai crescer, e uma porta só é uma porta só para
+## validar.
+
+signal ficha_sincronizada()
+signal recusado(motivo: String)
+
+const PASTA_MUNDO := "user://mundo/"
+
+## Ações que um cliente pode pedir. Qualquer coisa fora desta lista é ignorada —
+## é a diferença entre validar e confiar.
+const ACOES := ["comprar", "vender", "usar_item", "recompensa", "capturar"]
+
+## Ficha de cada peer conectado. Só existe no dono.
+var _fichas: Dictionary = {}    ## peer -> PlayerData
+var _nomes: Dictionary = {}     ## peer -> nome do personagem
+
+
+func _ready() -> void:
+	Rede.jogador_saiu.connect(_ao_sair)
+	Rede.estado_mudou.connect(_ao_mudar_estado)
+
+
+func sou_o_dono() -> bool:
+	return MundoRede.sou_o_dono()
+
+
+## A ficha que vale para este processo agora.
+func minha() -> PlayerData:
+	return GameManager.player
+
+
+# --- porta única --------------------------------------------------------------
+
+## Pede uma mudança de progresso. Devolve verdadeiro quando a intenção foi
+## aceita **localmente**; num cliente isso só quer dizer "enviada", e o
+## resultado chega depois em `ficha_sincronizada`.
+func pedir(acao: String, argumentos: Dictionary = {}) -> bool:
+	if not ACOES.has(acao):
+		push_error("Ficha: ação desconhecida '%s'." % acao)
+		return false
+
+	if sou_o_dono():
+		var ficha := minha() if not Rede.online() else _ficha_de(Rede.meu_id())
+		var erro := _aplicar(ficha, acao, argumentos)
+		if erro != "":
+			recusado.emit(erro)
+			return false
+		ficha_sincronizada.emit()
+		return true
+
+	_pedir_ao_dono.rpc_id(1, acao, argumentos)
+	return true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _pedir_ao_dono(acao: String, argumentos: Dictionary) -> void:
+	if not sou_o_dono() or not ACOES.has(acao):
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var ficha := _ficha_de(peer)
+	if ficha == null:
+		return
+
+	var erro := _aplicar(ficha, acao, argumentos)
+	if erro != "":
+		_recusar.rpc_id(peer, erro)
+		return
+	_gravar(peer)
+	_sincronizar.rpc_id(peer, ficha.to_dict())
+
+
+@rpc("authority", "call_remote", "reliable")
+func _sincronizar(dados: Dictionary) -> void:
+	var ficha := minha()
+	if ficha == null:
+		return
+	ficha.sincronizar(dados)
+	ficha_sincronizada.emit()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _recusar(motivo: String) -> void:
+	recusado.emit(motivo)
+
+
+# --- regras (só rodam no dono) ------------------------------------------------
+
+## Devolve "" quando deu certo, ou o motivo da recusa.
+##
+## Toda validação mora aqui, de um lado só da rede. O cliente também esconde o
+## botão de comprar sem ouro, mas isso é conforto: quem decide é este método.
+func _aplicar(ficha: PlayerData, acao: String, a: Dictionary) -> String:
+	if ficha == null:
+		return "Sem ficha."
+
+	match acao:
+		"comprar":
+			var item_id := String(a.get("item", ""))
+			if DataManager.get_item(item_id).is_empty():
+				return "Item desconhecido."
+			# O preço sai do banco de dados, nunca do pacote: aceitar o número que
+			# o cliente mandou seria deixar ele comprar por zero.
+			if not ficha.spend_gold(_preco_de(item_id)):
+				return "Ouro insuficiente."
+			ficha.add_item(item_id, 1)
+			return ""
+
+		"vender":
+			var item_id := String(a.get("item", ""))
+			var margem := clampf(float(a.get("margem", 0.4)), 0.0, 1.0)
+			if not ficha.consume_item(item_id, 1):
+				return "Você não tem esse item."
+			ficha.add_gold(maxi(1, int(round(_preco_de(item_id) * margem))))
+			return ""
+
+		"usar_item":
+			var item_id := String(a.get("item", ""))
+			if not ficha.consume_item(item_id, 1):
+				return "Você não tem esse item."
+			return ""
+
+		"recompensa":
+			# Fim de batalha, missão e idle. O cliente diz o que aconteceu; o dono
+			# aplica. Ainda é confiança no cliente sobre **ter** vencido — o
+			# combate em si continua rodando lá. Fechar isso é a etapa seguinte, e
+			# ela exige mover a batalha inteira para o servidor.
+			ficha.add_gold(maxi(0, int(a.get("ouro", 0))))
+			if int(a.get("xp", 0)) > 0:
+				ficha.grant_xp(maxi(0, int(a.get("xp", 0))))
+			var itens: Dictionary = a.get("itens", {})
+			for item_id in itens:
+				if not DataManager.get_item(String(item_id)).is_empty():
+					ficha.add_item(String(item_id), maxi(0, int(itens[item_id])))
+			return ""
+
+		"capturar":
+			var criatura := CreatureData.from_dict(a.get("criatura", {}))
+			if criatura == null:
+				return "Criatura inválida."
+			ficha.add_creature(criatura)
+			return ""
+
+	return "Ação desconhecida."
+
+
+## `value` é o nome do campo no items.json — o mesmo que a loja usa para montar
+## a etiqueta. Se os dois lerem campos diferentes, o preço mostrado e o cobrado
+## divergem, e o jogador vê o ouro sumir errado.
+static func _preco_de(item_id: String) -> int:
+	return maxi(1, int(DataManager.get_item(item_id).get("value", 0)))
+
+
+# --- fichas guardadas no servidor ---------------------------------------------
+
+func _ficha_de(peer: int) -> PlayerData:
+	if peer == Rede.meu_id():
+		return minha()
+	return _fichas.get(peer, null)
+
+
+## Chamado pelo cliente ao entrar: ele diz quem é, o servidor devolve a ficha
+## que tem guardada para esse nome (ou aceita a que veio, na primeira visita).
+@rpc("any_peer", "call_remote", "reliable")
+func apresentar_personagem(nome: String, inicial: Dictionary) -> void:
+	if not sou_o_dono():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if _fichas.has(peer):
+		# Já conhecemos este peer. Reapresentar recarregaria a ficha do disco e
+		# jogaria fora o que ele fez desde a última gravação.
+		return
+
+	var limpo := nome.strip_edges().substr(0, 24)
+	if limpo == "":
+		limpo = "Treinador"
+
+	var ficha := _carregar(limpo)
+	if ficha == null:
+		# Primeira visita: o mundo ainda não conhece este personagem, então
+		# aceita o que o jogador trouxe. Daqui para frente quem manda é o
+		# servidor, e o arquivo local dele não altera mais nada aqui.
+		ficha = PlayerData.from_dict(inicial)
+		GameLog.info(GameLog.Channel.SYSTEM, "Ficha: '%s' entrou pela primeira vez neste mundo." % limpo)
+	else:
+		GameLog.info(GameLog.Channel.SYSTEM, "Ficha: '%s' voltou (nível %d)." % [limpo, ficha.level])
+
+	_fichas[peer] = ficha
+	_nomes[peer] = limpo
+	_gravar(peer)
+	_sincronizar.rpc_id(peer, ficha.to_dict())
+
+
+## O cliente se apresenta assim que a conexão fecha — uma vez por conexão.
+##
+## `estado_mudou` dispara também quando outro jogador entra ou sai, então sem
+## esta trava o cliente se reapresentava a cada movimento na sala, e o servidor
+## recarregava a ficha do disco por cima do que estava em memória.
+var _apresentado: bool = false
+
+
+func entrar_no_mundo() -> void:
+	if sou_o_dono() or minha() == null or _apresentado:
+		return
+	_apresentado = true
+	apresentar_personagem.rpc_id(1, minha().display_name, minha().to_dict())
+
+
+func _ao_mudar_estado() -> void:
+	if Rede.estado == Rede.Estado.CONECTADO:
+		entrar_no_mundo()
+	elif not Rede.online():
+		_apresentado = false
+		_fichas.clear()
+		_nomes.clear()
+
+
+func _ao_sair(peer: int) -> void:
+	if not sou_o_dono():
+		return
+	_gravar(peer)
+	_fichas.erase(peer)
+	_nomes.erase(peer)
+
+
+func _gravar(peer: int) -> void:
+	var ficha: PlayerData = _fichas.get(peer, null)
+	var nome := String(_nomes.get(peer, ""))
+	if ficha == null or nome == "":
+		return
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(PASTA_MUNDO))
+	var arquivo := FileAccess.open(_caminho(nome), FileAccess.WRITE)
+	if arquivo == null:
+		GameLog.error(GameLog.Channel.SYSTEM, "Ficha: não consegui gravar '%s'." % nome)
+		return
+	arquivo.store_string(JSON.stringify(ficha.to_dict(), "\t"))
+	arquivo.close()
+
+
+func _carregar(nome: String) -> PlayerData:
+	var caminho := _caminho(nome)
+	if not FileAccess.file_exists(caminho):
+		return null
+	var arquivo := FileAccess.open(caminho, FileAccess.READ)
+	if arquivo == null:
+		return null
+	var bruto := arquivo.get_as_text()
+	arquivo.close()
+	var dados: Variant = JSON.parse_string(bruto)
+	if not (dados is Dictionary):
+		return null
+	return PlayerData.from_dict(dados)
+
+
+static func _caminho(nome: String) -> String:
+	# `validate_filename` para um nome com barra não virar caminho de pasta.
+	return PASTA_MUNDO + nome.validate_filename() + ".json"

@@ -23,12 +23,16 @@ var _coluna_compra: VBoxContainer = null
 var _coluna_venda: VBoxContainer = null
 var _ouro: Label = null
 var _rodape: Label = null
+## Frase a mostrar quando a compra/venda for confirmada pela `Ficha`.
+var _ultimo_pedido: String = ""
 
 
 func _ready() -> void:
 	layer = 50
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
+	Ficha.ficha_sincronizada.connect(_ao_sincronizar)
+	Ficha.recusado.connect(_ao_recusar)
 
 
 func abrir(config: Dictionary) -> void:
@@ -203,29 +207,41 @@ func _preco(item_id: String, compra: bool) -> int:
 
 # --- ações --------------------------------------------------------------------
 
+## Comprar e vender não mexem mais no ouro daqui: quem faz a conta é a `Ficha`,
+## que jogando sozinho é este mesmo processo e numa partida é o servidor. O
+## painel só pede e reage ao que voltar.
 func _comprar(item_id: String) -> void:
-	var dados := GameManager.player
-	var preco := _preco(item_id, true)
-	if not dados.spend_gold(preco):
-		_rodape.text = "Ouro insuficiente."
-		return
-	dados.add_item(item_id, 1)
 	AudioManager.tocar(&"ui_clique")
-	_rodape.text = "Comprou %s por %d de ouro." % [DataManager.get_item_name(item_id), preco]
-	GameManager.save_now("compra")
-	_atualizar()
+	_ultimo_pedido = "Comprou %s por %d de ouro." % [
+		DataManager.get_item_name(item_id), _preco(item_id, true)
+	]
+	Ficha.pedir("comprar", {"item": item_id})
 
 
 func _vender(item_id: String) -> void:
-	var dados := GameManager.player
-	if not dados.consume_item(item_id, 1):
-		return
-	var preco := _preco(item_id, false)
-	dados.add_gold(preco)
 	AudioManager.tocar(&"ui_clique")
-	_rodape.text = "Vendeu %s por %d de ouro." % [DataManager.get_item_name(item_id), preco]
-	GameManager.save_now("venda")
+	_ultimo_pedido = "Vendeu %s por %d de ouro." % [
+		DataManager.get_item_name(item_id), _preco(item_id, false)
+	]
+	Ficha.pedir("vender", {"item": item_id, "margem": _margem})
+
+
+## A resposta pode demorar uma ida e volta de rede, então o texto do rodapé fica
+## guardado e só aparece quando a mudança de fato aconteceu.
+func _ao_sincronizar() -> void:
+	if not visible:
+		return
+	if _ultimo_pedido != "":
+		_rodape.text = _ultimo_pedido
+		_ultimo_pedido = ""
 	_atualizar()
+
+
+func _ao_recusar(motivo: String) -> void:
+	if not visible:
+		return
+	_ultimo_pedido = ""
+	_rodape.text = motivo
 
 
 func _unhandled_input(event: InputEvent) -> void:

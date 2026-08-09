@@ -728,7 +728,7 @@ func _usar_item(item_id: String) -> void:
 				_rodape.text = "Ninguém precisa de cura agora."
 				return
 			var curado := alvo.heal(DamageCalculator.compute_heal(alvo.max_hp(), valor))
-			dados.consume_item(item_id)
+			Ficha.pedir("usar_item", {"item": item_id})
 			AudioManager.tocar(&"cura")
 			_rodape.text = "%s recuperou %d de vida." % [alvo.display_name(), curado]
 		"heal_team_percent":
@@ -736,7 +736,7 @@ func _usar_item(item_id: String) -> void:
 			if equipe.is_empty():
 				_rodape.text = "Sua equipe está vazia."
 				return
-			dados.consume_item(item_id)
+			Ficha.pedir("usar_item", {"item": item_id})
 			var total := 0
 			for criatura in equipe:
 				total += criatura.heal(DamageCalculator.compute_heal(criatura.max_hp(), valor))

@@ -329,6 +329,58 @@ func to_dict() -> Dictionary:
 	}
 
 
+## Copia um estado inteiro **para dentro** desta instância e avisa quem escuta.
+##
+## Diferente de `from_dict`, que cria um objeto novo. A diferença importa: o HUD,
+## a moldura do jogador e a mochila estão todos ligados aos sinais **deste**
+## objeto. Trocar a instância deixaria a interface ligada num fantasma, mostrando
+## o ouro de antes para sempre.
+##
+## É por aqui que o estado autoritativo do servidor chega ao cliente.
+func sincronizar(source: Dictionary) -> void:
+	var outro := PlayerData.from_dict(source)
+	if outro == null:
+		return
+
+	var mudou_ouro := gold != outro.gold
+	var mudou_nivel := level != outro.level
+	var inventario_antigo := inventory.duplicate()
+
+	display_name = outro.display_name
+	appearance = outro.appearance
+	level = outro.level
+	xp = outro.xp
+	gold = outro.gold
+	collection = outro.collection
+	team_uids = outro.team_uids
+	inventory = outro.inventory
+	quest_state = outro.quest_state
+	flags = outro.flags
+	unlocked_maps = outro.unlocked_maps
+	defeated_bosses = outro.defeated_bosses
+	defeated_mini_bosses = outro.defeated_mini_bosses
+	cleared_zones = outro.cleared_zones
+	starter_species = outro.starter_species
+
+	# Posição e mapa **não** vêm juntos de propósito: quem manda em onde você
+	# está é o seu próprio jogo, e sobrescrever isso com o que o servidor tinha
+	# guardado teleportaria o jogador para trás a cada compra.
+
+	if mudou_ouro:
+		gold_changed.emit(gold)
+	if mudou_nivel:
+		level_changed.emit(level)
+	xp_changed.emit(xp, xp_to_next_level())
+	for item_id in inventory:
+		if int(inventario_antigo.get(item_id, 0)) != int(inventory[item_id]):
+			inventory_changed.emit(String(item_id), int(inventory[item_id]))
+	for item_id in inventario_antigo:
+		if not inventory.has(item_id):
+			inventory_changed.emit(String(item_id), 0)
+	collection_changed.emit()
+	team_changed.emit()
+
+
 static func from_dict(source: Dictionary) -> PlayerData:
 	var data := PlayerData.new()
 	data.display_name = source.get("name", "Treinador")

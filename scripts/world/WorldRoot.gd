@@ -34,6 +34,18 @@ func _ready() -> void:
 	map_id = GameManager.player.current_map
 	map_data = DataManager.get_map(map_id)
 
+	if GameManager.modo_servidor:
+		# Servidor dedicado: só o que decide o mundo. Geometria entra porque as
+		# criaturas colidem com ela; câmera, HUD, avatar e batalha ficam de fora,
+		# porque não existe ninguém olhando nem lutando deste lado.
+		_build_world()
+		_build_interactables()
+		_build_spawner()
+		_build_presenca()
+		GameManager.player.unlock_map(map_id)
+		GameLog.info(GameLog.Channel.WORLD, "Servidor: mundo '%s' no ar." % map_id)
+		return
+
 	_build_world()
 	_build_player()
 	_build_camera()

@@ -408,7 +408,7 @@ func tentar_captura(item_id: String = "binding_core") -> bool:
 		Notify.warn("Você não tem %s." % DataManager.get_item_name(item_id))
 		return false
 
-	dados.consume_item(item_id)
+	Ficha.pedir("usar_item", {"item": item_id})
 	var alvo := _vivos(_inimigos)[0]
 	var potencia := float(DataManager.get_item(item_id).get("capture_power", 1.0))
 	var chance := CreatureFactory.capture_chance(alvo.data, potencia)
@@ -434,7 +434,9 @@ func tentar_captura(item_id: String = "binding_core") -> bool:
 
 	FloatingText3D.mostrar(self, topo, FloatingText3D.aviso("capturado!"))
 	AudioManager.tocar(&"captura_sucesso")
-	dados.add_creature(alvo.data)
+	# Quem grava a criatura na coleção é a Ficha: jogando sozinho isso acontece
+	# aqui mesmo, e numa partida é o servidor que passa a ter o bicho.
+	Ficha.pedir("capturar", {"criatura": alvo.data.to_dict()})
 	QuestManager.registrar_captura(alvo.data)
 	Notify.good("%s foi capturado!" % alvo.data.display_name())
 	mensagem.emit("%s entrou para a sua coleção." % alvo.data.display_name())
@@ -576,8 +578,10 @@ func _distribuir_recompensas(resumo: Dictionary, capturado: bool) -> Dictionary:
 	if subiu:
 		AudioManager.tocar(&"nivel")
 
-	dados.add_gold(ouro)
-	dados.grant_xp(maxi(1, int(round(float(xp_total) * 0.35))))
+	Ficha.pedir("recompensa", {
+		"ouro": ouro,
+		"xp": maxi(1, int(round(float(xp_total) * 0.35))),
+	})
 
 	resumo["xp"] = xp_cada
 	resumo["ouro"] = ouro
@@ -611,16 +615,18 @@ func _creditar_chefe(dados: PlayerData, resumo: Dictionary) -> Dictionary:
 	var ouro_extra := int(_encontro_recompensas.get("gold", 0))
 	var xp_extra := int(_encontro_recompensas.get("player_xp", 0))
 	if ouro_extra > 0:
-		dados.add_gold(ouro_extra)
 		resumo["ouro"] = int(resumo.get("ouro", 0)) + ouro_extra
-	if xp_extra > 0:
-		dados.grant_xp(xp_extra)
+
+	var premios: Dictionary = {}
 	var itens: Array[String] = []
 	for item_id in _encontro_recompensas.get("items", {}).keys():
 		var quantidade := int(_encontro_recompensas["items"][item_id])
-		dados.add_item(String(item_id), quantidade)
+		premios[String(item_id)] = quantidade
 		itens.append("%dx %s" % [quantidade, DataManager.get_item_name(String(item_id))])
 	resumo["itens"] = itens
+
+	# Um pedido só com tudo do chefe: ouro, XP e itens numa ida de rede.
+	Ficha.pedir("recompensa", {"ouro": ouro_extra, "xp": xp_extra, "itens": premios})
 
 	QuestManager.registrar_encontro_nomeado(_encontro_id)
 	GameLog.info(GameLog.Channel.BATTLE, "Chefe derrotado: %s (%s)." % [_encontro_id, _encontro_mapa])

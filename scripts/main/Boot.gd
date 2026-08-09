@@ -72,6 +72,12 @@ func _boot() -> void:
 		DataManager.all_species().size(), DataManager.map_ids().size()
 	]
 
+	# Servidor dedicado. Fora do bloco de depuração de propósito: isto precisa
+	# funcionar no build final, que é o que roda na VPS.
+	if OS.get_cmdline_user_args().has("--servidor"):
+		_subir_servidor()
+		return
+
 	# Testes automáticos headless, para exercitar as cenas sem ninguém apertar
 	# botão:
 	#   godot --headless --quit-after 900 -- --smoke        (vai direto ao mundo)
@@ -120,6 +126,41 @@ func _conceder_criatura_de_teste() -> void:
 		GameManager.player.set_team_slot(0, criatura.uid)
 		GameLog.info(GameLog.Channel.SYSTEM, "Teste: entregue %s Nv.%d." % [criatura.display_name(), nivel])
 		return
+
+
+## Sobe o mundo sem cliente:
+##
+##   CapMonster --headless -- --servidor [--mapa=greenvale] [--porta=24565]
+##
+## O `PlayerData` criado aqui não é personagem de ninguém — ele existe porque o
+## mundo lê o mapa atual dele para saber o que construir. As fichas de verdade
+## são as dos jogadores que conectarem, guardadas pelo `Ficha` em `user://mundo/`.
+func _subir_servidor() -> void:
+	var mapa := "greenvale"
+	var porta := Rede.PORTA_PADRAO
+	for argumento in OS.get_cmdline_user_args():
+		if argumento.begins_with("--mapa="):
+			mapa = argumento.substr("--mapa=".length())
+		elif argumento.begins_with("--porta="):
+			porta = int(argumento.substr("--porta=".length()))
+
+	if not DataManager.has_map(mapa):
+		GameLog.error(GameLog.Channel.SYSTEM, "Servidor: mapa '%s' não existe." % mapa)
+		get_tree().quit(1)
+		return
+
+	GameManager.modo_servidor = true
+	GameManager.new_game("Servidor", {})
+	GameManager.player.current_map = mapa
+	GameManager.player.has_exact_position = false
+
+	if not Rede.hospedar(porta):
+		GameLog.error(GameLog.Channel.SYSTEM, "Servidor: %s" % Rede.erro)
+		get_tree().quit(1)
+		return
+
+	GameLog.info(GameLog.Channel.SYSTEM, "Servidor dedicado: mapa '%s', porta %d." % [mapa, porta])
+	SceneFlow.goto_world()
 
 
 func _run_intro_test() -> void:
