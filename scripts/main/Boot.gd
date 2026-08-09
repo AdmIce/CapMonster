@@ -217,11 +217,17 @@ func _personagem_de_teste() -> void:
 	for argumento in OS.get_cmdline_user_args():
 		if not argumento.begins_with("--personagem="):
 			continue
-		var indice := int(argumento.substr("--personagem=".length()))
+		# `corpo` ou `corpo:roupa:cabelo` -- os dois ultimos so valem no kit
+		# modular, e sem eles o personagem sai pelado e careca, que e o padrao.
+		var partes := argumento.substr("--personagem=".length()).split(":")
 		var aparencia := GameManager.player.appearance.duplicate()
-		aparencia["body"] = indice
+		aparencia["body"] = int(partes[0])
+		if partes.size() > 1:
+			aparencia["outfit"] = int(partes[1])
+		if partes.size() > 2:
+			aparencia["hair"] = int(partes[2])
 		GameManager.player.appearance = aparencia
-		GameLog.info(GameLog.Channel.SYSTEM, "Teste: corpo %d." % indice)
+		GameLog.info(GameLog.Channel.SYSTEM, "Teste: corpo %s." % ":".join(partes))
 		return
 
 

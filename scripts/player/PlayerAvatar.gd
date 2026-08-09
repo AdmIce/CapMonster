@@ -41,6 +41,72 @@ const GIRO_PARA_FRENTE := 180.0
 ## constantes globais: cada montagem grava os seus em `_anim_*`.
 const KIT_KAYKIT := "kaykit"
 const KIT_KENNEY := "kenney"
+const KIT_MODULAR := "modular"
+
+## --- kit modular ---------------------------------------------------------------
+##
+## Quaternius Universal Base Characters + Modular Character Outfits + Universal
+## Animation Library (CC0). O que ele tem de diferente dos outros dois: corpo,
+## cabelo e roupa sao arquivos separados que **compartilham o mesmo esqueleto**
+## -- 65 ossos, conferidos um a um antes de trazer o pacote. Por isso a montagem
+## aqui nao instancia um personagem pronto: ela pendura pecas num esqueleto so.
+##
+## E o unico kit em que tirar a roupa deixa um corpo por baixo, em vez de deixar
+## um buraco. Nos KayKit a armadura esta assada na malha do tronco.
+const PASTA_MODULAR := "res://assets/models/personagens/"
+
+## Medido em cena: o osso `root` fica nos pes e o topo do rig em 1,60; com o
+## cranio, 1,72 ate a cabeca.
+const ALTURA_DO_RIG_MODULAR := 1.72
+
+## Este kit e mais alto que os outros de proposito.
+##
+## Medida do osso mais alto de cada kit ja montado: Cavaleiro (KayKit) 1,445 m,
+## Andarilho (Kenney) 1,890 m, Aventureiro em ALTURA_ALVO 1,581 m. Ou seja: em
+## altura o novo nao era menor que o KayKit -- o que engana e a proporcao. O
+## KayKit e chibi, de cabeca enorme, e ocupa muito mais espaco visual; o modular
+## e realista e magro, e "le" como pequeno ao lado dele.
+##
+## 2,0 poe o osso mais alto em ~1,86, na mesma faixa do Kenney, que e o
+## personagem com que a comparacao acontece na pratica.
+const ALTURA_ALVO_MODULAR := 2.0
+
+## Estes tambem olham para +Z, igual aos KayKit -- eu tinha assumido o contrario
+## e o personagem andava de costas. Nao da para ver isso numa foto parada: so
+## andando, e foi assim que apareceu.
+const GIRO_MODULAR := 180.0
+
+const ANIM_MODULAR := {
+	"parado": "Idle",
+	"andando": "Walk",
+	"correndo": "Jog_Fwd",
+	"interagir": "Interact",
+	"sentar_desce": "Sitting_Enter",
+	"sentado": "Sitting_Idle",
+	"sentar_levanta": "Sitting_Exit",
+}
+
+## Cabelos. O primeiro e "nenhum" de proposito: careca tem de ser uma escolha.
+const CABELOS_MODULARES: Array[String] = [
+	"", "Hair_SimpleParted", "Hair_Long", "Hair_Buns", "Hair_Buzzed", "Hair_BuzzedFemale", "Hair_Beard",
+]
+
+## Roupas, por corpo. Os nomes de arquivo nao sao simetricos entre os dois
+## (o masculino tem `Feet_Boots` e `Acc_Pauldron`, o feminino tem `Feet` e
+## `Acc_Pauldrons`), entao a lista e declarada inteira em vez de montada por
+## template -- template exigiria adivinhar, e adivinhar erra em silencio.
+const ROUPAS_MODULARES := {
+	"masculino": [
+		{ "nome": "Sem roupa", "pecas": [] },
+		{ "nome": "Camponês", "pecas": ["Male_Peasant_Body", "Male_Peasant_Arms", "Male_Peasant_Legs", "Male_Peasant_Feet"] },
+		{ "nome": "Patrulheiro", "pecas": ["Male_Ranger_Body", "Male_Ranger_Arms", "Male_Ranger_Legs", "Male_Ranger_Feet_Boots", "Male_Ranger_Acc_Pauldron"] },
+	],
+	"feminino": [
+		{ "nome": "Sem roupa", "pecas": [] },
+		{ "nome": "Camponesa", "pecas": ["Female_Peasant_Body", "Female_Peasant_Arms", "Female_Peasant_Legs", "Female_Peasant_Feet"] },
+		{ "nome": "Patrulheira", "pecas": ["Female_Ranger_Body", "Female_Ranger_Arms", "Female_Ranger_Legs", "Female_Ranger_Feet", "Female_Ranger_Acc_Pauldrons"] },
+	],
+}
 
 const ANIM_PARADO := "Idle"
 const ANIM_ANDANDO := "Walking_A"
@@ -83,11 +149,17 @@ const PERSONAGENS: Array[Dictionary] = [
 	{ "kit": KIT_KENNEY, "pele": "skaterFemaleA", "nome": "Andarilha" },
 	{ "kit": KIT_KENNEY, "pele": "criminalMaleA", "nome": "Fugitivo" },
 	{ "kit": KIT_KENNEY, "pele": "cyborgFemaleA", "nome": "Autômata" },
+	# Kit modular, no fim da lista de proposito: quem ja tem personagem salvo
+	# guarda o **indice** da escolha, e inserir no meio trocaria o corpo de todo
+	# mundo que ja estava jogando.
+	{ "kit": KIT_MODULAR, "arquivo": "Superhero_Male_FullBody", "sexo": "masculino", "nome": "Aventureiro" },
+	{ "kit": KIT_MODULAR, "arquivo": "Superhero_Female_FullBody", "sexo": "feminino", "nome": "Aventureira" },
 ]
 ## Nome antigo, mantido para a tela de criação não precisar de dois caminhos.
 const BODY_TYPES: Array[String] = [
 	"Cavaleiro", "Bárbaro", "Ladina", "Maga",
 	"Andarilho", "Andarilha", "Fugitivo", "Autômata",
+	"Aventureiro", "Aventureira",
 ]
 
 const SKIN_TONES: Array[Color] = [Color("#F0D2B4"), Color("#C08E62"), Color("#8A5C3C")]
@@ -113,6 +185,13 @@ var _state: State = State.IDLE
 ## voltaria para "parado" e cortaria a descida pela metade.
 var _transicao: String = ""
 var _depois_da_transicao: String = ""
+## Nomes das tres animacoes de sentar do kit em uso. Comecam nos do KayKit e
+## sao trocados por quem monta outro kit -- eram constantes fixas, e com um
+## terceiro kit no jogo uma constante fixa seria o mesmo que dizer "so o KayKit
+## senta".
+var _anim_sentar_desce: String = ANIM_SENTAR_DESCE
+var _anim_sentado: String = ANIM_SENTADO
+var _anim_sentar_levanta: String = ANIM_SENTAR_LEVANTA
 var _speed_ratio: float = 0.0
 var _interact_timer: float = 0.0
 
@@ -165,6 +244,22 @@ func _reconstruir() -> void:
 
 	if not _montar_modelo():
 		_montar_primitivas()
+	elif OS.is_debug_build():
+		# "Por que este personagem esta menor que o outro?" nao se responde
+		# olhando: kits diferentes tem proporcao diferente, e a foto engana.
+		# Medido pelo osso mais alto ja escalado -- a AABB de malha com pele e da
+		# pose de vinculo e nao diz onde o personagem pisa.
+		call_deferred("_relatar_altura")
+
+
+func _relatar_altura() -> void:
+	var esqueleto := _achar_esqueleto(_raiz)
+	if esqueleto == null:
+		return
+	var topo := -INF
+	for i in esqueleto.get_bone_count():
+		topo = maxf(topo, (esqueleto.global_transform * esqueleto.get_bone_global_pose(i)).origin.y)
+	GameLog.verbose(GameLog.Channel.SYSTEM, "Altura montada: %.3f m (osso mais alto)." % topo)
 
 
 ## Verdadeiro quando o personagem escolhido aceita cabelo, tom de pele e roupa.
@@ -174,7 +269,11 @@ func _reconstruir() -> void:
 ## eles selecionados seria interface que nao faz nada — e o jogo nao tem disso.
 static func aceita_personalizacao(indice: int) -> bool:
 	var escolha: Dictionary = PERSONAGENS[clampi(indice, 0, PERSONAGENS.size() - 1)]
-	return String(escolha.get("kit", KIT_KAYKIT)) == KIT_KAYKIT
+	var kit := String(escolha.get("kit", KIT_KAYKIT))
+	# O modular aceita pelo caminho oposto ao do KayKit: la se tinge peca
+	# nomeada, aqui se troca a malha inteira. Para quem escolhe, da no mesmo --
+	# os dois controles fazem alguma coisa.
+	return kit == KIT_KAYKIT or kit == KIT_MODULAR
 
 
 func appearance() -> Dictionary:
@@ -193,9 +292,13 @@ func _outfit() -> Dictionary:
 
 func _montar_modelo() -> bool:
 	var escolha: Dictionary = PERSONAGENS[_index("body", PERSONAGENS.size())]
-	if String(escolha.get("kit", KIT_KAYKIT)) == KIT_KENNEY:
-		return _montar_kenney(escolha)
-	return _montar_kaykit(escolha)
+	match String(escolha.get("kit", KIT_KAYKIT)):
+		KIT_KENNEY:
+			return _montar_kenney(escolha)
+		KIT_MODULAR:
+			return _montar_modular(escolha)
+		_:
+			return _montar_kaykit(escolha)
 
 
 func _montar_kaykit(escolha: Dictionary) -> bool:
@@ -407,6 +510,140 @@ static func _achar_esqueleto(no: Node) -> Skeleton3D:
 ##    `jump.fbx`), e precisam ser copiadas para um tocador nosso;
 ##  · a escala vem medida em cena, porque o importador de FBX entrega AABB e
 ##    pose de descanso colapsadas (ver ALTURA_NATURAL_KENNEY).
+## Monta o personagem modular: um corpo, um cabelo e um conjunto de roupa,
+## todos pendurados no **mesmo** esqueleto.
+##
+## E o unico kit que nao instancia um personagem pronto. As pecas vem em
+## arquivos separados, cada uma com a sua propria copia do esqueleto; usar todas
+## daria varios esqueletos animados em paralelo, que e desperdicio e sai de
+## sincronia. Em vez disso, so as malhas sao aproveitadas: elas mudam de pai
+## para o esqueleto do corpo e passam a ser deformadas por ele.
+func _montar_modular(escolha: Dictionary) -> bool:
+	var caminho := PASTA_MODULAR + "corpos/" + String(escolha["arquivo"]) + ".gltf"
+	if not ResourceLoader.exists(caminho):
+		GameLog.warn(GameLog.Channel.SYSTEM, "Corpo '%s' ausente; usando o boneco simples." % caminho)
+		return false
+
+	var instancia := (load(caminho) as PackedScene).instantiate()
+	if not (instancia is Node3D):
+		instancia.queue_free()
+		return false
+
+	var modelo := instancia as Node3D
+	_raiz.add_child(modelo)
+
+	var esqueleto := _achar_esqueleto(modelo)
+	if esqueleto == null:
+		GameLog.warn(GameLog.Channel.SYSTEM, "Corpo modular sem Skeleton3D: %s" % caminho)
+		modelo.queue_free()
+		return false
+
+	_vestir_modular(esqueleto, escolha)
+
+	modelo.scale = Vector3.ONE * (ALTURA_ALVO_MODULAR / ALTURA_DO_RIG_MODULAR)
+	modelo.position.y = 0.0
+	modelo.rotation_degrees.y = GIRO_MODULAR
+
+	_animador = _montar_animador_modular(modelo)
+	_montar_asas(modelo)
+	_usando_modelo = true
+	_tocar(_anim_parado)
+	return true
+
+
+func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
+	var sexo := String(escolha.get("sexo", "masculino"))
+	var conjuntos: Array = ROUPAS_MODULARES.get(sexo, [])
+	if not conjuntos.is_empty():
+		var conjunto: Dictionary = conjuntos[_index("outfit", conjuntos.size())]
+		for peca in conjunto.get("pecas", []):
+			_pendurar_peca(esqueleto, "roupas/" + String(peca))
+
+	var cabelo := CABELOS_MODULARES[_index("hair", CABELOS_MODULARES.size())]
+	if cabelo != "":
+		_pendurar_peca(esqueleto, "cabelos/" + cabelo)
+
+
+## Tira as malhas de um arquivo de peca e prende no esqueleto que ja existe.
+##
+## `skeleton` precisa ser reapontado na mao: a malha vinha com um caminho para o
+## esqueleto do proprio arquivo, e depois da mudanca de pai esse caminho aponta
+## para um no que foi jogado fora -- a peca aparece em T, parada, enquanto o
+## corpo anda.
+func _pendurar_peca(esqueleto: Skeleton3D, relativo: String) -> void:
+	var caminho := PASTA_MODULAR + relativo + ".gltf"
+	if not ResourceLoader.exists(caminho):
+		GameLog.warn(GameLog.Channel.SYSTEM, "Peça ausente: %s" % caminho)
+		return
+
+	var cena := (load(caminho) as PackedScene).instantiate()
+	var malhas: Array[MeshInstance3D] = []
+	for no in _todos(cena):
+		if no is MeshInstance3D:
+			malhas.append(no as MeshInstance3D)
+
+	for malha in malhas:
+		malha.get_parent().remove_child(malha)
+		esqueleto.add_child(malha)
+		malha.skeleton = NodePath("..")
+
+	cena.queue_free()
+
+
+## O tocador de animacoes do kit modular.
+##
+## As animacoes vem num arquivo so, separado dos corpos, e as faixas apontam
+## para `Armature/Skeleton3D:<osso>`. O corpo tem exatamente essa hierarquia, e
+## e por isso que o tocador entra na raiz do modelo: com `root_node` em outro
+## lugar, as faixas nao acham osso nenhum e o personagem fica em T sem erro
+## nenhum no console.
+func _montar_animador_modular(modelo: Node3D) -> AnimationPlayer:
+	var caminho := PASTA_MODULAR + "animacoes/UAL1_Standard.glb"
+	if not ResourceLoader.exists(caminho):
+		GameLog.warn(GameLog.Channel.SYSTEM, "Biblioteca de animações ausente: %s" % caminho)
+		return null
+
+	var cena := (load(caminho) as PackedScene).instantiate()
+	var origem := _achar_animador(cena)
+	if origem == null:
+		cena.queue_free()
+		return null
+
+	var biblioteca := AnimationLibrary.new()
+	var nomes: Dictionary = {}
+	for papel in ANIM_MODULAR:
+		var nome := String(ANIM_MODULAR[papel])
+		if not origem.has_animation(nome):
+			continue
+		var animacao: Animation = origem.get_animation(nome).duplicate(true)
+		# Sentar e interagir tocam uma vez; o resto e ciclo. Em laco, "sentar"
+		# faria o personagem sentar e levantar para sempre.
+		animacao.loop_mode = Animation.LOOP_NONE if papel in ["interagir", "sentar_desce", "sentar_levanta"] else Animation.LOOP_LINEAR
+		biblioteca.add_animation(nome, animacao)
+		nomes[papel] = nome
+	cena.queue_free()
+
+	if biblioteca.get_animation_list().is_empty():
+		GameLog.warn(GameLog.Channel.SYSTEM, "Nenhuma animação modular foi carregada.")
+		return null
+
+	var reserva := String(biblioteca.get_animation_list()[0])
+	_anim_parado = String(nomes.get("parado", reserva))
+	_anim_andando = String(nomes.get("andando", _anim_parado))
+	_anim_correndo = String(nomes.get("correndo", _anim_andando))
+	_anim_interagir = String(nomes.get("interagir", _anim_parado))
+	_anim_sentar_desce = String(nomes.get("sentar_desce", ""))
+	_anim_sentado = String(nomes.get("sentado", ""))
+	_anim_sentar_levanta = String(nomes.get("sentar_levanta", _anim_parado))
+
+	var animador := AnimationPlayer.new()
+	animador.name = "Animador"
+	modelo.add_child(animador)
+	animador.root_node = animador.get_path_to(modelo)
+	animador.add_animation_library("", biblioteca)
+	return animador
+
+
 func _montar_kenney(escolha: Dictionary) -> bool:
 	var caminho := PASTA_KENNEY + "Model/characterMedium.fbx"
 	if not ResourceLoader.exists(caminho):
@@ -569,7 +806,7 @@ func _atualizar_animacao() -> void:
 	if _transicao != "":
 		return
 	if _state == State.SENTADO:
-		_tocar(ANIM_SENTADO)
+		_tocar(_anim_sentado)
 		_animador.speed_scale = 1.0
 		return
 	match _state:
@@ -653,7 +890,7 @@ static func _cilindro(raio: float, altura: float) -> CylinderMesh:
 ## seguir em frente sem a pose em vez de travar esperando uma animacao que nao
 ## existe.
 func pode_sentar() -> bool:
-	return _animador != null and _animador.has_animation(ANIM_SENTADO)
+	return _animador != null and _animador.has_animation(_anim_sentado)
 
 
 ## Senta no chao. Devolve false quando o modelo nao tem a animacao.
@@ -661,7 +898,7 @@ func sentar() -> bool:
 	if not pode_sentar():
 		return false
 	_state = State.SENTADO
-	_tocar_uma_vez(ANIM_SENTAR_DESCE, ANIM_SENTADO)
+	_tocar_uma_vez(_anim_sentar_desce, _anim_sentado)
 	return true
 
 
@@ -669,7 +906,7 @@ func levantar() -> void:
 	if _state != State.SENTADO:
 		return
 	_state = State.IDLE
-	_tocar_uma_vez(ANIM_SENTAR_LEVANTA, _anim_parado)
+	_tocar_uma_vez(_anim_sentar_levanta, _anim_parado)
 
 
 ## Toca uma animacao **uma vez** e emenda na seguinte quando ela acabar.
