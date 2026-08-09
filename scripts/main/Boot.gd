@@ -107,6 +107,17 @@ func _boot() -> void:
 		if args.has("--smoke-intro"):
 			_run_intro_test()
 			return
+		# `-- --simular` ou `--simular=<rodadas>`: mede o equilibrio do combate e
+		# sai. Nao abre menu nem mundo -- e ferramenta, nao partida.
+		for argumento in args:
+			if argumento == "--simular" or argumento.begins_with("--simular="):
+				var rodadas := SimuladorDeBatalha.RODADAS_PADRAO
+				if argumento.contains("="):
+					rodadas = int(argumento.split("=")[1])
+				SimuladorDeBatalha.new().rodar(rodadas)
+				get_tree().quit()
+				return
+
 		if args.has("--smoke"):
 			_run_smoke_test()
 			return
