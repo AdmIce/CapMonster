@@ -4,6 +4,34 @@ O CapMonster roda sem cliente: o mundo existe, as criaturas nascem e circulam, e
 as fichas dos jogadores ficam guardadas ali, mesmo com ninguém conectado. É o
 que separa "jogar na casa de alguém" de "um mundo que está sempre no ar".
 
+## O servidor de verdade
+
+Roda em **151.242.149.57**, porta 24565, Ubuntu 22.04. O serviço `capmonster`
+sobe no boot e reinicia sozinho se cair.
+
+```bash
+systemctl status capmonster        # está no ar?
+journalctl -u capmonster -f        # acompanhar
+systemctl restart capmonster       # reiniciar
+```
+
+O endereço está gravado no cliente em `Rede.SERVIDOR_OFICIAL`. **Trocar de
+servidor é trocar essa linha e publicar uma versão nova** — o jogador não digita
+IP nenhum, e não existe modo offline: o jogo conecta ao abrir o menu e os botões
+de jogar só ligam quando a conexão fecha. Deixar `SERVIDOR_OFICIAL` vazio devolve
+o jogo ao modo antigo, com "Jogar junto" e IP na mão.
+
+## Trocar o binário por uma versão nova
+
+```powershell
+godot --headless --path . --export-release "Servidor Linux" build/servidor/capmonster-servidor.x86_64
+scp build/servidor/capmonster-servidor.x86_64 root@151.242.149.57:/opt/capmonster/
+ssh root@151.242.149.57 'chown capmonster:capmonster /opt/capmonster/capmonster-servidor.x86_64 && systemctl restart capmonster'
+```
+
+O cliente e o servidor precisam ser da mesma versão: o formato dos pacotes muda
+com o jogo. Ao publicar uma versão que mexe em rede, atualize os dois.
+
 ## Do que ele precisa
 
 Medido com o mundo de pé, em regime (não no arranque, que consome mais):

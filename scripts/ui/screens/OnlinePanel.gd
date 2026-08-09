@@ -65,13 +65,22 @@ func _construir() -> void:
 	coluna.add_child(_estado)
 	coluna.add_child(Design.divider())
 
+	# Com servidor oficial nao faz sentido hospedar nem digitar endereco: o jogo
+	# ja entrou sozinho. O painel vira so a lista de quem esta online.
+	var oficial := Rede.tem_servidor_oficial()
+
 	_botao_hospedar = Design.button("Abrir meu mundo (porta %d)" % PORTA, "primary")
 	_botao_hospedar.pressed.connect(_hospedar)
 	coluna.add_child(_botao_hospedar)
 
-	coluna.add_child(Design.label("ENTRAR NO MUNDO DE ALGUÉM", Design.FS_CAPTION, Design.TEXT_DIM))
+	var rotulo_entrar := Design.label("ENTRAR NO MUNDO DE ALGUÉM", Design.FS_CAPTION, Design.TEXT_DIM)
+	coluna.add_child(rotulo_entrar)
 	var linha := Design.hbox(Design.S_SM)
 	coluna.add_child(linha)
+
+	_botao_hospedar.visible = not oficial
+	rotulo_entrar.visible = not oficial
+	linha.visible = not oficial
 
 	# 64 caracteres: cabe IPv4, IPv6 curto e nome de domínio de um servidor.
 	_endereco = Design.line_edit("IP do host, ex.: 192.168.0.10", 64)
@@ -84,8 +93,11 @@ func _construir() -> void:
 	_botao_entrar.pressed.connect(_entrar)
 	linha.add_child(_botao_entrar)
 
+	# Desconectar do servidor oficial não é uma escolha que faça sentido: o jogo
+	# só existe online, e o menu reconectaria em cinco segundos.
 	_botao_sair = Design.button("Desconectar", "danger")
 	_botao_sair.pressed.connect(func(): Rede.desligar())
+	_botao_sair.visible = not oficial
 	coluna.add_child(_botao_sair)
 
 	coluna.add_child(Design.divider())
@@ -96,12 +108,16 @@ func _construir() -> void:
 	coluna.add_child(Design.divider())
 	# Parênteses no `%`: ele tem precedência maior que o `+`, então sem eles o
 	# formato tentaria se aplicar só ao último pedaço da frase.
-	coluna.add_child(Design.body(
+	var rodape := Design.body(
+		"O mundo roda num servidor sempre ligado. Você entra nele sozinho ao abrir o jogo."
+		if oficial else
 		("Na mesma rede (mesmo wi-fi) basta o IP local do host. Pela internet, o "
 		+ "host precisa liberar a porta %d no roteador — ou o mundo precisa rodar "
 		+ "num servidor com IP público.") % PORTA,
 		Design.TEXT_MUTED
-	))
+	)
+	rodape.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	coluna.add_child(rodape)
 
 
 func _hospedar() -> void:

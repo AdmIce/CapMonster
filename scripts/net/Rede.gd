@@ -26,6 +26,23 @@ signal estado_mudou()   ## conectou, desconectou ou falhou — para a interface
 const PORTA_PADRAO := 24565
 const MAX_JOGADORES := 8
 
+## Servidor oficial do jogo. Vazio faz o jogo voltar a ser de um jogador só com
+## partida por IP; preenchido, o cliente entra aqui sozinho e não existe modo
+## offline — que é como um mundo compartilhado precisa funcionar, senão cada um
+## joga num mundo diferente e nada do que fizerem junto se acumula.
+const SERVIDOR_OFICIAL := "151.242.149.57"
+
+
+func tem_servidor_oficial() -> bool:
+	return SERVIDOR_OFICIAL.strip_edges() != ""
+
+
+## Conecta no servidor do jogo. Chamado pelo menu; não pede nada ao jogador.
+func entrar_no_oficial() -> bool:
+	if not tem_servidor_oficial() or online() or estado == Estado.CONECTANDO:
+		return false
+	return entrar(SERVIDOR_OFICIAL, PORTA_PADRAO)
+
 ## 15 envios por segundo. Mais que isso é banda jogada fora para um jogo em que
 ## ninguém corre mais que 8 m/s; menos que isso e a interpolação começa a nadar.
 const ENVIOS_POR_SEGUNDO := 15.0

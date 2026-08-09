@@ -8,6 +8,8 @@ var _settings_overlay: Control = null
 ## do vídeo de fundo sem entrar no layout da coluna.
 var _online_overlay: Node = null
 var _update_overlay: Node = null
+var _estado_rede: Label = null
+var _botoes_de_jogo: Array[Button] = []
 
 
 func _ready() -> void:
@@ -78,9 +80,17 @@ func _build() -> void:
 	new_game.pressed.connect(_on_new_game)
 	right.add_child(new_game)
 
-	var online := Design.button("Jogar junto", "default", true)
+	# Com servidor oficial nao ha o que escolher: o jogo entra sozinho. O botao
+	# vira "quem esta online", e a linha abaixo dele diz o estado da conexao.
+	var online := Design.button(
+		"Quem está online" if Rede.tem_servidor_oficial() else "Jogar junto", "default", true
+	)
 	online.pressed.connect(_on_online)
 	right.add_child(online)
+
+	_estado_rede = Design.sobre_o_mundo(Design.caption("", Design.TEXT_CLARO_MUTED), 3)
+	_estado_rede.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	right.add_child(_estado_rede)
 
 	var settings := Design.button("Configurações", "default", true)
 	settings.pressed.connect(_on_settings)
@@ -90,8 +100,10 @@ func _build() -> void:
 	quit.pressed.connect(_on_quit)
 	right.add_child(quit)
 
+	_botoes_de_jogo = [_continue_button, new_game]
 	_refresh_save_state(save_info)
 	_procurar_atualizacao()
+	_ligar_no_servidor()
 
 	var version := Design.caption(
 		"v%s  ·  protótipo" % ProjectSettings.get_setting("application/config/version", "0.0.0"),
@@ -107,13 +119,62 @@ func _build() -> void:
 	add_child(version)
 
 
+## Entra no servidor do jogo assim que o menu abre.
+##
+## Sem modo offline de proposito: o mundo e compartilhado, e deixar jogar solto
+## faria cada um progredir num mundo diferente, sem nada do que fizeram junto se
+## acumular. Enquanto nao conecta, os botoes de jogar ficam desligados e a linha
+## de estado diz o porque - travar sem explicar seria pior que travar.
+func _ligar_no_servidor() -> void:
+	if not Rede.tem_servidor_oficial():
+		if _estado_rede != null:
+			_estado_rede.visible = false
+		return
+	Rede.estado_mudou.connect(_atualizar_estado_da_rede)
+	_atualizar_estado_da_rede()
+	Rede.entrar_no_oficial()
+
+
+func _atualizar_estado_da_rede() -> void:
+	if _estado_rede == null or not is_inside_tree():
+		return
+
+	var pronto := Rede.online()
+	for botao in _botoes_de_jogo:
+		if botao != null and is_instance_valid(botao):
+			# "Continuar" tem a propria regra (so com save); a rede so pode piorar.
+			botao.disabled = not pronto or botao.get_meta("sem_save", false)
+
+	match Rede.estado:
+		Rede.Estado.CONECTADO, Rede.Estado.HOSPEDANDO:
+			_estado_rede.text = "Conectado  ·  %d no mundo" % maxi(1, Rede.jogadores.size())
+			_estado_rede.add_theme_color_override("font_color", Design.HEALTH)
+		Rede.Estado.CONECTANDO:
+			_estado_rede.text = "Conectando ao servidor..."
+			_estado_rede.add_theme_color_override("font_color", Design.TEXT_CLARO_MUTED)
+		_:
+			_estado_rede.text = "Servidor fora do ar. Tentando de novo..."
+			_estado_rede.add_theme_color_override("font_color", Design.DANGER)
+			_tentar_de_novo()
+
+
+## Nova tentativa depois de uma pausa. Sem isto, quem abriu o jogo antes do
+## servidor voltar ficaria travado no menu ate fechar e abrir.
+func _tentar_de_novo() -> void:
+	await get_tree().create_timer(5.0).timeout
+	if is_inside_tree() and not Rede.online():
+		Rede.entrar_no_oficial()
+
+
 func _refresh_save_state(info: Label) -> void:
 	var metadata := SaveManager.save_metadata()
 	if metadata.is_empty():
 		_continue_button.disabled = true
+		_continue_button.set_meta("sem_save", true)
 		info.text = "Nenhum save encontrado. Comece um jogo novo."
 		return
-	_continue_button.disabled = false
+	_continue_button.set_meta("sem_save", false)
+	_continue_button.disabled = not Rede.online() and Rede.tem_servidor_oficial()
 	var minutes := int(float(metadata.get("playtime", 0.0)) / 60.0)
 	info.text = "%s  ·  Nv.%d  ·  %s  ·  %d criatura(s)  ·  %d min jogados" % [
 		metadata.get("name", "Treinador"),
