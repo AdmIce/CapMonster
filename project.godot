@@ -17,6 +17,15 @@ run/main_scene="res://scenes/main/Boot.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://assets/ui/icone.png"
 
+; A abertura padrão da Godot é o logo azul da engine sobre cinza. Trocando pela
+; nossa e igualando o fundo ao da cena Boot, não existe salto: a logo aparece,
+; a cena entra por cima com a mesma logo no mesmo fundo, e o jogador não vê
+; "carregando engine" antes de ver o jogo.
+boot_splash/bg_color=Color(0.043, 0.055, 0.067, 1)
+boot_splash/image="res://assets/ui/splash.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
+
 [autoload]
 
 GameLog="*res://scripts/core/GameLog.gd"
@@ -56,3 +65,8 @@ window/stretch/aspect="expand"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 anti_aliasing/quality/msaa_3d=2
+
+; Mesma cor da abertura. Sem isto, o quadro entre a abertura sumir e a primeira
+; cena desenhar sai no cinza padrão da engine — um piscada clara no meio do
+; escuro, que é justamente o que denuncia "isto foi feito na Godot".
+environment/defaults/default_clear_color=Color(0.043, 0.055, 0.067, 1)
