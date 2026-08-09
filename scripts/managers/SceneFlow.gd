@@ -10,6 +10,7 @@ signal transition_finished(target: String)
 
 const SCENES := {
 	"main_menu": "res://scenes/main/MainMenu.tscn",
+	"character_select": "res://scenes/main/CharacterSelect.tscn",
 	"character_creation": "res://scenes/main/CharacterCreation.tscn",
 	"intro": "res://scenes/main/Intro.tscn",
 	"world": "res://scenes/maps/World.tscn",
@@ -45,6 +46,10 @@ func goto_main_menu() -> void:
 
 func goto_character_creation() -> void:
 	_goto("character_creation")
+
+
+func goto_character_select() -> void:
+	_goto("character_select")
 
 
 ## Abertura com o professor, que termina na escolha da criatura inicial.
