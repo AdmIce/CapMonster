@@ -18,7 +18,12 @@ jobs:
     container:
       image: barichello/godot-ci:4.3
     steps:
+      # Histórico inteiro e com as tags: as notas da versão são montadas a
+      # partir dos commits desde a tag anterior, e um checkout raso não teria
+      # nem os commits nem a tag para comparar.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # A imagem já traz os templates; o export procura em ~/.local/share.
       - name: Preparar templates de exportação
@@ -43,10 +48,56 @@ jobs:
 
       # O jogo procura exatamente estes dois nomes ao se atualizar
       # (scripts/core/Atualizador.gd). Renomear aqui quebra a atualização.
+      # As notas que o GitHub gera sozinho saem só com o link de comparação
+      # quando os commits vão direto na main, sem pull request -- que é como
+      # este projeto trabalha. Então elas são montadas aqui: a frase que o
+      # `tools/lancar.ps1 -Notas` gravou na tag, e abaixo o que mudou.
+      - name: Montar as notas da versão
+        id: notas
+        run: |
+          set -euo pipefail
+          VERSAO="${GITHUB_REF_NAME}"
+
+          # Mensagem da tag, sem a linha "v0.7.0:" que o lancar.ps1 põe na
+          # frente -- quem lê já sabe qual versão está lendo.
+          TITULO=$(git tag -l --format='%(contents:subject)' "${VERSAO}" | sed "s/^${VERSAO}: *//")
+
+          # Tag anterior nesta linha do tempo. Na primeira versão não existe, e
+          # aí a lista é o histórico inteiro.
+          ANTERIOR=$(git describe --tags --abbrev=0 "${VERSAO}^" 2>/dev/null || echo "")
+          if [ -n "${ANTERIOR}" ]; then
+            FAIXA="${ANTERIOR}..${VERSAO}"
+          else
+            FAIXA="${VERSAO}"
+          fi
+
+          # Só o assunto de cada commit, sem os de merge e sem o commit que só
+          # troca o número da versão -- ninguém precisa ler "v0.7.0" na lista do
+          # que mudou na v0.7.0.
+          MUDANCAS=$(git log --no-merges --pretty=format:'%s' "${FAIXA}" \
+            | grep -v -E '^v[0-9]+\.[0-9]+\.[0-9]+' \
+            | sed 's/^/- /' || true)
+
+          {
+            echo "corpo<<FIM_DAS_NOTAS"
+            if [ -n "${TITULO}" ]; then
+              echo "**${TITULO}**"
+              echo
+            fi
+            if [ -n "${MUDANCAS}" ]; then
+              echo "${MUDANCAS}"
+            else
+              echo "- Ajustes internos."
+            fi
+            echo "FIM_DAS_NOTAS"
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Publicar release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          # Nossas notas, não as automáticas: ver a etapa acima.
+          body: ${{ steps.notas.outputs.corpo }}
+          generate_release_notes: false
           files: |
             build/windows/CapMonster.exe
             build/windows/CapMonster.pck
@@ -83,6 +134,13 @@ jobs:
           NOTAS=$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" \
             "https://api.github.com/repos/${REPO}/releases/tags/${VERSAO}" \
             | jq -r '.body // ""' || echo "")
+
+          # Fora o "Full Changelog: <link>". No Discord ninguém vai ler um diff
+          # de commits, e uma mensagem que é só um link não diz o que mudou.
+          # O nome da versão no topo já leva para a página.
+          NOTAS=$(printf '%s' "${NOTAS}" | grep -v -i 'Full Changelog' || true)
+          NOTAS=$(printf '%s' "${NOTAS}" | sed -e 's/[[:space:]]*$//' -e '/./,$!d')
+
           if [ -z "${NOTAS}" ]; then
             NOTAS="Detalhes na pagina da versao."
           fi
