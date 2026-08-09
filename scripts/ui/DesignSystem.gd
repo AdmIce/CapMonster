@@ -215,6 +215,13 @@ const BOTAO_TEXTO := {
 }
 
 
+## Troca a variante de um botão que já existe. Serve a grupos de escolha, onde o
+## botão escolhido vira "primary" e os outros voltam para "default" — refazer o
+## botão a cada clique perderia posição, foco e as conexões de sinal.
+static func repintar_botao(node: Button, variant: String) -> void:
+	_style_button(node, variant)
+
+
 static func _style_button(node: Button, variant: String) -> void:
 	if _aplicar_pele_botao(node, variant):
 		return

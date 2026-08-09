@@ -92,6 +92,9 @@ func _build() -> void:
 	zoom_row.add_child(slider)
 	column.add_child(zoom_row)
 
+	column.add_child(Design.divider())
+	_montar_camera(column)
+
 	column.add_child(Design.spacer(Design.S_SM))
 
 	var close := Design.button("Fechar", "primary")
@@ -154,6 +157,85 @@ func _confirmar_grafico(caixa: CheckButton, aviso: Label, ligado: bool) -> void:
 	# Desmarcar de volta ao cancelar, senão a caixinha mente sobre o estado.
 	dialogo.canceled.connect(func(): caixa.set_pressed_no_signal(not ligado))
 	dialogo.popup_centered()
+
+
+## Escolha do enquadramento. Quatro botões em vez de uma lista suspensa: são
+## quatro opções fixas, e ver as quatro de uma vez explica mais que abrir um
+## menu para descobrir o que existe.
+func _montar_camera(column: VBoxContainer) -> void:
+	column.add_child(Design.label("Câmera", Design.FS_LABEL, Design.TEXT_MUTED))
+
+	var ajuda := Design.caption("")
+	var sensibilidade_linha := _montar_sensibilidade()
+	var botoes := {}
+
+	for modo in CameraRig.ORDEM:
+		var config: Dictionary = CameraRig.MODOS[modo]
+		var botao := Design.button(String(config["rotulo"]))
+		botao.pressed.connect(func(): _escolher_camera(modo, botoes, ajuda, sensibilidade_linha))
+		botoes[modo] = botao
+		column.add_child(botao)
+
+	column.add_child(ajuda)
+	column.add_child(sensibilidade_linha)
+
+	# Pintar sem aplicar: abrir as configurações não é trocar de câmera.
+	_pintar_camera(
+		CameraRig.modo_do_id(String(SaveManager.get_setting(CameraRig.CHAVE_MODO, "terceira_pessoa"))),
+		botoes, ajuda, sensibilidade_linha
+	)
+
+
+func _montar_sensibilidade() -> VBoxContainer:
+	var linha := Design.vbox(Design.S_XS)
+	var valor := clampf(
+		float(SaveManager.get_setting(CameraRig.CHAVE_SENSIBILIDADE, CameraRig.SENSIBILIDADE_PADRAO)),
+		CameraRig.SENSIBILIDADE_MIN, CameraRig.SENSIBILIDADE_MAX
+	)
+	var rotulo := Design.label(
+		"Sensibilidade do mouse  %d%%" % _sensibilidade_em_porcento(valor),
+		Design.FS_LABEL, Design.TEXT_MUTED
+	)
+	linha.add_child(rotulo)
+
+	var barra := HSlider.new()
+	barra.min_value = CameraRig.SENSIBILIDADE_MIN
+	barra.max_value = CameraRig.SENSIBILIDADE_MAX
+	barra.step = 0.01
+	barra.value = valor
+	barra.custom_minimum_size = Vector2(0, 22)
+	barra.value_changed.connect(func(v: float):
+		rotulo.text = "Sensibilidade do mouse  %d%%" % _sensibilidade_em_porcento(v)
+		SaveManager.set_setting(CameraRig.CHAVE_SENSIBILIDADE, v)
+		for node in get_tree().get_nodes_in_group("camera_rig"):
+			if node is CameraRig:
+				(node as CameraRig).definir_sensibilidade(v)
+	)
+	linha.add_child(barra)
+	return linha
+
+
+## Em porcentagem do máximo, porque "0,16 graus por pixel" não diz nada a
+## ninguém enquanto arrasta o controle.
+func _sensibilidade_em_porcento(valor: float) -> int:
+	return int(round(valor / CameraRig.SENSIBILIDADE_MAX * 100.0))
+
+
+func _escolher_camera(modo: CameraRig.Modo, botoes: Dictionary, ajuda: Label, sensibilidade: Control) -> void:
+	SaveManager.set_setting(CameraRig.CHAVE_MODO, String(CameraRig.MODOS[modo]["id"]))
+	for node in get_tree().get_nodes_in_group("camera_rig"):
+		if node is CameraRig:
+			(node as CameraRig).definir_modo(modo)
+	_pintar_camera(modo, botoes, ajuda, sensibilidade)
+
+
+func _pintar_camera(modo: CameraRig.Modo, botoes: Dictionary, ajuda: Label, sensibilidade: Control) -> void:
+	for chave in botoes:
+		Design.repintar_botao(botoes[chave], "primary" if chave == modo else "default")
+	ajuda.text = String(CameraRig.MODOS[modo]["ajuda"])
+	# O controle de sensibilidade só existe quando a câmera usa o mouse. Deixar
+	# ele à mostra e sem efeito nos outros enquadramentos seria mentira.
+	sensibilidade.visible = bool(CameraRig.MODOS[modo]["mouse"])
 
 
 func _apply_camera_zoom(value: float) -> void:

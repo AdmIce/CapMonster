@@ -305,6 +305,16 @@ func _update_steps(running: bool, delta: float) -> void:
 
 
 func _update_facing(delta: float) -> void:
+	# Com o mouse mandando na câmera, o corpo aponta para onde se olha, mesmo
+	# parado. Deixar o corpo seguir o movimento nesses enquadramentos faria você
+	# mirar num lado e andar de lado para o outro — e em primeira pessoa seria
+	# impossível virar sem sair andando.
+	if camera_rig != null and is_instance_valid(camera_rig) and camera_rig.orienta_personagem():
+		var frente := camera_rig.direcao_frente()
+		_facing_angle = atan2(frente.x, frente.z)
+		rotation.y = lerp_angle(rotation.y, _facing_angle + PI, TURN_SPEED * delta)
+		return
+
 	var planar := Vector2(velocity.x, velocity.z)
 	if planar.length_squared() < 0.04:
 		return

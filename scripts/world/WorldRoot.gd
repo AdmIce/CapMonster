@@ -257,8 +257,19 @@ func _build_camera() -> void:
 	)
 	camera_rig.follow(player, true)
 	player.camera_rig = camera_rig
-	if String(SaveManager.get_setting("camera_mode", "terceira_pessoa")) == "terceira_pessoa":
-		camera_rig.definir_modo(CameraRig.Modo.TERCEIRA_PESSOA)
+	camera_rig.modo_mudou.connect(_ao_mudar_camera)
+	camera_rig.definir_modo(CameraRig.modo_do_id(_modo_de_camera_pedido()))
+
+
+## Qual enquadramento entra. Normalmente o que ficou salvo; em build de debug,
+## `-- --camera=primeira_pessoa` manda mais, para a ferramenta de captura poder
+## fotografar cada um sem depender do que estava gravado na máquina.
+func _modo_de_camera_pedido() -> String:
+	if OS.is_debug_build():
+		for argumento in OS.get_cmdline_user_args():
+			if argumento.begins_with("--camera="):
+				return argumento.split("=")[1]
+	return String(SaveManager.get_setting(CameraRig.CHAVE_MODO, "terceira_pessoa"))
 
 
 func _build_interactables() -> void:
@@ -475,7 +486,62 @@ func _voltar_ao_ponto_de_cura() -> void:
 		companion.seguir(player)
 
 
+## Reage à troca de enquadramento, venha ela da tecla C, do painel de
+## configurações ou da batalha. Só o lado visível: quem salva a escolha é quem
+## atendeu o jogador.
+func _ao_mudar_camera(_novo: CameraRig.Modo) -> void:
+	if companion != null:
+		companion.definir_enquadramento(camera_rig.modo != CameraRig.Modo.ISOMETRICA)
+	# Em primeira pessoa a câmera está dentro da cabeça: o que apareceria é o
+	# miolo do modelo, que é um borrão que tapa a tela inteira.
+	if player != null and player.avatar != null:
+		player.avatar.visible = not camera_rig.esconde_personagem()
+	_atualizar_mouse()
+
+
+## O mouse fica preso só quando a câmera precisa dele **e** não há nada na tela
+## para clicar ou ler. Um painel aberto com o cursor preso é um painel que não
+## dá para usar.
+func _atualizar_mouse() -> void:
+	var precisa := camera_rig != null and camera_rig.usa_mouse() and not _interface_na_frente()
+	var desejado := Input.MOUSE_MODE_CAPTURED if precisa else Input.MOUSE_MODE_VISIBLE
+	if Input.mouse_mode != desejado:
+		Input.mouse_mode = desejado
+
+
+## Cada painel é testado contra `null` porque `_process` já está rodando
+## enquanto o mundo se monta, e volta a rodar enquanto ele se desfaz: nas duas
+## pontas há quadros em que metade da interface ainda não existe.
+func _interface_na_frente() -> bool:
+	if battle != null and battle.em_batalha:
+		return true
+	if dialogue != null and dialogue.is_open():
+		return true
+	if pause_menu != null and pause_menu.is_open():
+		return true
+	if shop != null and shop.esta_aberto():
+		return true
+	if inventory != null and inventory.esta_aberto():
+		return true
+	if map_panel != null and map_panel.visible:
+		return true
+	return hud != null and hud.chat_aberto()
+
+
+func _process(_delta: float) -> void:
+	# Todo quadro, e não só na troca de painel: painel é aberto e fechado de
+	# muitos lugares (tecla, clique, fim de diálogo, fim de batalha), e um deles
+	# esquecido deixaria o cursor preso sem jeito de soltar.
+	_atualizar_mouse()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	# Olhar com o mouse, nos enquadramentos que usam mouse. Antes de tudo: é o
+	# evento mais frequente do jogo e não combina com nenhuma ação de tecla.
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		camera_rig.girar_com_mouse((event as InputEventMouseMotion).relative)
+		return
+
 	if event.is_action_pressed("map"):
 		# Mapa não abre no meio da batalha nem por cima de outro painel.
 		if not battle.em_batalha and not dialogue.is_open() and not shop.esta_aberto() \
@@ -499,12 +565,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			pause_menu.toggle()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("toggle_camera"):
-		var novo := camera_rig.alternar_modo()
-		var terceira := novo == CameraRig.Modo.TERCEIRA_PESSOA
-		if companion != null:
-			companion.definir_enquadramento(terceira)
-		SaveManager.set_setting("camera_mode", "terceira_pessoa" if terceira else "isometrica")
-		Notify.show_message("Câmera: %s" % ("terceira pessoa" if terceira else "isométrica"))
+		camera_rig.alternar_modo()
+		# Salvar aqui, e não no sinal: a batalha também troca o enquadramento, e
+		# gravar lá apagaria a escolha do jogador a cada luta.
+		SaveManager.set_setting(CameraRig.CHAVE_MODO, camera_rig.id_do_modo())
+		Notify.show_message("Câmera: %s" % camera_rig.config()["rotulo"])
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("toggle_debug") and debug_menu != null:
 		debug_menu.toggle()
@@ -517,6 +582,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _exit_tree() -> void:
+	# Sair do mundo com o cursor preso deixaria o menu inutilizável: `_process`
+	# não roda mais para soltá-lo.
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
 	# Leaving the world keeps the exact position so returning puts the player
 	# back on the same spot. Skipped when the player is mid-travel: the
 	# destination map already chose its own spawn point.

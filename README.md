@@ -41,7 +41,9 @@ Não há nada para compilar nem dependência para baixar.
 | `Espaço` | Pular |
 | `Espaço` ×2 | Levantar voo; voando, segurar sobe |
 | `Ctrl` | Voando, descer (chegou ao chão, pousa) |
-| `Esc` | Menu de pausa / fechar diálogo |
+| `C` | Trocar de câmera: de cima → terceira pessoa → sobre o ombro → primeira pessoa |
+| Mouse | Olhar, nas câmeras de ombro e de primeira pessoa |
+| `Esc` | Menu de pausa / fechar diálogo (também solta o mouse) |
 | `F5` | Salvamento rápido |
 | `F1` | Menu de debug (**só em build de debug**) |
 
