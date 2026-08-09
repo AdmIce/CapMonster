@@ -7,6 +7,37 @@
   ],
   "maps": [
     {
+      "_comentario": [
+        "Mapa inicial. Ao contrario dos outros, o cenario nao e montado peca por peca:",
+        "vem inteiro de um .glb, e a colisao e gerada das proprias malhas (ver MapBuilder.build_modelo).",
+        "Por isso nao ha ground_color, terrain, scatter nem tilemap aqui - todos seriam desenhados por cima.",
+        "Sem npcs, sem zonas e sem portoes de proposito: por enquanto o jogador so nasce aqui."
+      ],
+      "id": "quarto",
+      "name": "Quarto",
+      "subtitle": "Onde tudo comeca",
+      "modelo": {
+        "arquivo": "res://assets/models/maps/quarto_otaku.glb",
+        "escala": 4.0,
+        "pos": [0, 0, 0],
+        "yaw": 0,
+        "_esconder": "A esfera de HDRI que o autor usou para iluminar a cena envolve o quarto inteiro e vira um teto preto.",
+        "esconder": ["hdri", "Sphere"],
+        "_esconder_acima": "Tira o telhado: some com o que esta inteiramente acima de 2,4 m, para a camera enxergar dentro do quarto. Parede inteira continua, porque comeca no chao.",
+        "esconder_acima": 7.0
+      },
+      "bounds": { "min_x": -6, "max_x": 6, "min_z": -6, "max_z": 6 },
+      "_camera": "O quarto tem uns 12 m de lado na escala 4. Enquadrar 7 m de altura faz ele ocupar a tela inteira, em vez de virar miniatura cercada de vazio.",
+      "camera": { "tamanho": 7.0 },
+      "ambient": {
+        "sky_top": "#1E2230",
+        "sky_horizon": "#3A3348",
+        "ambient_energy": 0.55,
+        "sun_energy": 0.5
+      },
+      "spawn_points": { "start": [0, 0] }
+    },
+    {
       "id": "vila_juncal",
       "name": "Vila Juncal",
       "subtitle": "Onde tudo começa",

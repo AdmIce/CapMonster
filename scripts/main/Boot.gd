@@ -191,6 +191,25 @@ func _run_intro_test() -> void:
 	SceneFlow.goto_intro()
 
 
+## `-- --mapa=<id>` no teste automatico entra pelo mapa pedido em vez do que
+## estava salvo. Sem isto, fotografar um mapa novo dependia de andar ate ele.
+func _mapa_de_teste() -> void:
+	for argumento in OS.get_cmdline_user_args():
+		if not argumento.begins_with("--mapa="):
+			continue
+		var id := argumento.substr("--mapa=".length())
+		if not DataManager.has_map(id):
+			GameLog.warn(GameLog.Channel.SYSTEM, "Teste: mapa '%s' nao existe." % id)
+			return
+		GameManager.player.current_map = id
+		GameManager.player.spawn_point = "start"
+		# Sem isto o jogador nasceria na coordenada que tinha no mapa anterior,
+		# que no mapa novo pode ser dentro de uma parede.
+		GameManager.player.has_exact_position = false
+		GameManager.player.unlock_map(id)
+		return
+
+
 func _run_smoke_test() -> void:
 	GameLog.info(GameLog.Channel.SYSTEM, "Teste automático: entrando direto no mundo.")
 	if not GameManager.continue_game():
@@ -201,6 +220,7 @@ func _run_smoke_test() -> void:
 			return
 		GameManager.choose_starter((starters[0] as CreatureSpecies).id)
 	_conceder_criatura_de_teste()
+	_mapa_de_teste()
 	GameManager.begin_session()
 	# Salvar aqui faz a segunda execução com --smoke cair no continue_game(),
 	# o que testa o ciclo salvar/carregar de graça.

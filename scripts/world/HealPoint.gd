@@ -7,7 +7,7 @@ const PULSE_SPEED := 2.2
 
 var point_id: String = ""
 
-var _glow: MeshInstance3D = null
+var _luz: OmniLight3D = null
 var _phase: float = 0.0
 
 
@@ -28,37 +28,28 @@ func _ready() -> void:
 	_build_visual()
 
 
+## A fogueira respira. Antes quem pulsava era o cone de chama desenhado à mão;
+## com o modelo no lugar dele, quem pulsa é a luz -- que é o que se enxerga de
+## longe e o que diz "aqui dá para descansar".
 func _process(delta: float) -> void:
-	if _glow == null:
+	if _luz == null:
 		return
 	_phase += delta * PULSE_SPEED
-	var material: StandardMaterial3D = _glow.material_override
-	material.emission_energy_multiplier = 1.4 + sin(_phase) * 0.5
-	_glow.scale = Vector3.ONE * (1.0 + sin(_phase) * 0.04)
+	_luz.light_energy = 1.5 + sin(_phase) * 0.35
+	_luz.omni_range = 9.0 + sin(_phase) * 0.6
 
 
+## O acampamento e a fogueira decorativa do mapa sao a mesma coisa vista de
+## angulos diferentes, entao os dois pedem o modelo ao MapBuilder. Antes eram
+## duas montagens a mao iguais, lado a lado, e nada garantia que continuassem
+## iguais.
 func _build_visual() -> void:
-	var stone := Color("#6E6558")
-	for i in 6:
-		var angle := TAU * float(i) / 6.0
-		add_child(_mesh(
-			SphereMesh.new(), stone,
-			Vector3(cos(angle) * 0.85, 0.14, sin(angle) * 0.85), Vector3.ONE * 0.36
-		))
-
-	_glow = _mesh(_cone(0.36, 0.9), Color("#E08A3C"), Vector3(0, 0.5, 0))
-	var material: StandardMaterial3D = _glow.material_override
-	material.emission_enabled = true
-	material.emission = Color("#F0A64E")
-	material.emission_energy_multiplier = 1.6
-	add_child(_glow)
-
-	var light := OmniLight3D.new()
-	light.light_color = Color("#F0A64E")
-	light.light_energy = 1.5
-	light.omni_range = 9.0
-	light.position = Vector3(0, 1.1, 0)
-	add_child(light)
+	var fogueira := MapBuilder.criar_fogueira()
+	add_child(fogueira)
+	for no in fogueira.get_children():
+		if no is OmniLight3D:
+			_luz = no as OmniLight3D
+			break
 
 
 func _perform(_by: Node3D) -> void:

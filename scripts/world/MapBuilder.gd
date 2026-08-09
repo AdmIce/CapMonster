@@ -44,8 +44,52 @@ static func build_modelo(parent: Node3D, map_data: Dictionary) -> void:
 	no.rotation_degrees.y = float(config.get("yaw", 0.0))
 	parent.add_child(no)
 
+	# Cenário de banco de modelos costuma vir com bagagem que não serve num jogo:
+	# a esfera de HDRI que o autor usou para iluminar a cena envolve tudo e vira
+	# um teto preto em volta do mapa. `esconder` tira pelo nome do nó.
+	var esconder: Array = config.get("esconder", [])
+	if not esconder.is_empty():
+		for descendente in _descendentes(no):
+			for pedaco in esconder:
+				if descendente is VisualInstance3D and String(descendente.name).contains(String(pedaco)):
+					(descendente as VisualInstance3D).visible = false
+
+	# Mapa interno tem teto, e teto tapa a câmera. Em vez de caçar o nome do nó
+	# do telhado — que muda a cada modelo — some com tudo que está acima da
+	# altura declarada. É o que todo jogo com interior faz.
+	var teto := float(config.get("esconder_acima", 0.0))
+	if teto > 0.0:
+		_tirar_o_telhado(no, teto)
+
 	if bool(config.get("colisao", true)):
 		_colidir_com_o_cenario(no)
+
+
+## Esconde as malhas que ficam inteiramente acima de `altura`, em metros de
+## mundo. Só as que estão **inteiramente** acima: uma parede que vai do chão ao
+## teto tem de continuar aparecendo, senão o quarto perde os lados.
+static func _tirar_o_telhado(raiz: Node3D, altura: float) -> void:
+	var escondidas := 0
+	var mais_alto := 0.0
+	for descendente in _descendentes(raiz):
+		if not (descendente is MeshInstance3D):
+			continue
+		var malha := descendente as MeshInstance3D
+		if malha.mesh == null:
+			continue
+		# Do espaço da malha para o do mundo: o modelo vem com escala embutida,
+		# e comparar a altura crua contra metros daria resultado sem sentido.
+		var caixa := malha.global_transform * malha.mesh.get_aabb()
+		mais_alto = maxf(mais_alto, caixa.position.y + caixa.size.y)
+		if caixa.position.y > altura:
+			malha.visible = false
+			escondidas += 1
+	# Dizer quanto cortou e qual e o ponto mais alto do cenario: sem isto,
+	# "o teto continua ai" nao tem como ser respondido sem abrir o editor.
+	GameLog.info(
+		GameLog.Channel.WORLD,
+		"Telhado: %d peca(s) escondida(s) acima de %.1f m; cenario vai ate %.1f m." % [escondidas, altura, mais_alto]
+	)
 
 
 ## Gera colisão a partir das próprias malhas do cenário.
@@ -649,29 +693,49 @@ static func _make_pillar(color: Color) -> Node3D:
 	return root
 
 
-static func _make_campfire(color: Color) -> Node3D:
-	var root := Node3D.new()
-	for i in 6:
-		var angle := TAU * float(i) / 6.0
-		root.add_child(_mesh(
-			SphereMesh.new(), color,
-			Vector3(cos(angle) * 0.7, 0.12, sin(angle) * 0.7),
-			Vector3.ONE * 0.32
-		))
-	var flame := _mesh(_cone(0.32, 0.8), Color("#E08A3C"), Vector3(0, 0.45, 0))
-	var material: StandardMaterial3D = flame.material_override
-	material.emission_enabled = true
-	material.emission = Color("#F0A64E")
-	material.emission_energy_multiplier = 2.0
-	root.add_child(flame)
+const FOGUEIRA := "res://assets/models/props/fogueira.glb"
+## O modelo nasce com 3,76 m de altura (medido: malha de 94 unidades a 0,04 de
+## escala). Fogueira de acampamento tem uns 60 cm, e o personagem tem 1,75 —
+## sem encolher, ela ficaria do dobro da altura de quem senta ao lado dela.
+const ESCALA_FOGUEIRA := 0.45
 
+
+## A fogueira dos acampamentos e dos marcos. Uma função só, usada pelos dois:
+## eram duas montagens à mão iguais, e trocar o modelo em um e esquecer o outro
+## deixaria dois desenhos de fogueira no mesmo jogo.
+static func criar_fogueira(cor_da_luz: Color = Color("#F0A64E")) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Fogueira"
+
+	if ResourceLoader.exists(FOGUEIRA):
+		var modelo: Node3D = (load(FOGUEIRA) as PackedScene).instantiate()
+		modelo.scale = Vector3.ONE * ESCALA_FOGUEIRA
+		root.add_child(modelo)
+	else:
+		# Sem o modelo, um monte de pedras: melhor uma fogueira feia do que um
+		# acampamento invisível com que dá para conversar.
+		GameLog.warn(GameLog.Channel.WORLD, "Modelo da fogueira não encontrado; usando o desenho antigo.")
+		for i in 6:
+			var angle := TAU * float(i) / 6.0
+			root.add_child(_mesh(
+				SphereMesh.new(), Color("#6E6558"),
+				Vector3(cos(angle) * 0.7, 0.12, sin(angle) * 0.7),
+				Vector3.ONE * 0.32
+			))
+
+	# A luz continua sendo nossa: a chama do modelo é malha, não ilumina nada, e
+	# é a luz que faz o acampamento parecer quente de longe.
 	var light := OmniLight3D.new()
-	light.light_color = Color("#F0A64E")
+	light.light_color = cor_da_luz
 	light.light_energy = 1.6
 	light.omni_range = 8.0
 	light.position = Vector3(0, 1.0, 0)
 	root.add_child(light)
 	return root
+
+
+static func _make_campfire(_color: Color) -> Node3D:
+	return criar_fogueira()
 
 
 # --- geometry helpers ---------------------------------------------------------

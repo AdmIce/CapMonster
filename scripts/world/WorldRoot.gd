@@ -270,6 +270,15 @@ func _build_camera() -> void:
 		float(bounds.get("min_x", -50)), float(bounds.get("max_x", 50)),
 		float(bounds.get("min_z", -50)), float(bounds.get("max_z", 50))
 	)
+	# Quanto o enquadramento de cima abrange, em metros de altura de tela. Mapa
+	# aberto quer os 17 padrão; um quarto de 12 m de lado, com esse valor, fica
+	# uma miniatura no meio da tela cercada de vazio. Aumentar o modelo em vez
+	# disso resolveria o vazio e criaria outro problema: o personagem viraria
+	# formiga dentro de um quarto de gigante. Quem muda é a câmera.
+	var enquadramento := float(map_data.get("camera", {}).get("tamanho", 0.0))
+	if enquadramento > 0.0:
+		camera_rig.orthographic_size = enquadramento
+
 	camera_rig.follow(player, true)
 	player.camera_rig = camera_rig
 	camera_rig.modo_mudou.connect(_ao_mudar_camera)

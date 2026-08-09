@@ -296,4 +296,8 @@ func _on_confirm() -> void:
 		# então o caminho certo é voltar para a seleção e decidir quem apagar.
 		Notify.bad("Máximo de personagens atingido. Apague um para criar outro.")
 		return
-	SceneFlow.goto_intro()
+	# Direto para o mundo, sem a abertura. Por enquanto o jogador nasce no quarto
+	# e pronto: nao ha professor entregando a primeira criatura, entao a equipe
+	# comeca vazia. A abertura continua existindo (data/intro.json e Intro.tscn)
+	# para quando o inicio for redesenhado -- so nao esta mais no caminho.
+	SceneFlow.goto_world()
