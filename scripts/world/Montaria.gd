@@ -14,16 +14,18 @@ extends Node3D
 
 const MODELO := "res://assets/models/montarias/cavalo.glb"
 
+## Altura que a montaria tem no mundo, em metros, seja qual for a escala com que
+## o arquivo veio.
+##
+## Aprendido na marra: o cavalo original trazia 0,01 de escala embutida da
+## conversao de FBX. Ao reexportar o arquivo (para reduzir textura e malha) essa
+## escala foi embora, e o cavalo passou a nascer com 2 cm de altura -- sem erro
+## nenhum no console, so um bicho invisivel embaixo do cavaleiro. Medir e
+## redimensionar aqui torna a montaria indiferente a isso.
+const ALTURA_ALVO := 2.7
+
 const ANIM_PARADO := "Horse|Horse_Idle"
 const ANIM_ANDANDO := "Horse|Horse_Walk"
-
-## Osso onde a sela fica, em ordem de preferência.
-##
-## A primeira tentativa foi centralizar pela caixa da malha, e ela erra: o
-## pescoço e a cabeça do cavalo puxam a caixa para a frente, então centralizar
-## deixa o cavaleiro atrás da garupa. O osso da espinha não tem esse problema --
-## ele está onde a sela está.
-const OSSOS_DA_SELA: Array[String] = ["spine_03", "spine_02", "spine_01", "pelvis"]
 
 ## Altura da sela, como fracao da altura do cavalo.
 ##
@@ -90,41 +92,40 @@ func _assentar() -> void:
 	if _modelo == null or not _modelo.is_inside_tree():
 		return
 
-	var baixo := INF
-	var alto := -INF
-	var frente := Vector3(INF, 0.0, INF)
-	var tras := Vector3(-INF, 0.0, -INF)
-	for no in _todos(_modelo):
-		if no is MeshInstance3D and (no as MeshInstance3D).mesh != null:
-			var malha := no as MeshInstance3D
-			var caixa := malha.global_transform * malha.mesh.get_aabb()
-			baixo = minf(baixo, caixa.position.y)
-			alto = maxf(alto, caixa.position.y + caixa.size.y)
-			frente.x = minf(frente.x, caixa.position.x)
-			frente.z = minf(frente.z, caixa.position.z)
-			tras.x = maxf(tras.x, caixa.position.x + caixa.size.x)
-			tras.z = maxf(tras.z, caixa.position.z + caixa.size.z)
-
-	if baixo == INF:
+	# Primeiro a escala: tudo o que vem depois (chao, sela) depende do tamanho
+	# final, e medir antes de redimensionar daria numeros do tamanho errado.
+	var medida := _extremos()
+	if medida.is_empty():
 		return
+	var natural: float = medida["alto"] - medida["baixo"]
+	if natural > 0.001:
+		_modelo.scale *= ALTURA_ALVO / natural
+		await get_tree().process_frame
+		medida = _extremos()
+		if medida.is_empty():
+			return
+
+	var baixo: float = medida["baixo"]
+	var alto: float = medida["alto"]
 
 	# Assenta no chao.
 	_modelo.position.y -= baixo - global_position.y
 	altura = alto - baixo
 
-	# E poe a sela debaixo do cavaleiro. Sem isto o cavalo nasce deslocado --
-	# o pivo do modelo cai perto da garupa, e o cavaleiro fica flutuando atras
-	# do bicho em vez de montado nele.
-	var sela := _osso_da_sela()
-	if sela != Vector3.INF:
-		_modelo.position.x -= sela.x - global_position.x
-		# -Z e a frente no projeto inteiro, entao +Z recua o cavalo.
-		_modelo.position.z -= sela.z - global_position.z - AVANCO_DA_SELA
-		_altura_da_sela = altura * FRACAO_DA_SELA
-	else:
-		# Sem o osso o cavalo fica deslocado, mas ainda da para montar.
-		_altura_da_sela = altura * FRACAO_DA_SELA
-		GameLog.warn(GameLog.Channel.WORLD, "Montaria sem osso de sela; usando a altura do meio.")
+	# E poe a sela debaixo do cavaleiro. Sem isto o cavalo nasce deslocado -- o
+	# pivo do modelo cai perto da garupa, e o cavaleiro fica flutuando atras do
+	# bicho em vez de montado nele.
+	#
+	# Pela caixa da malha, e nao pelo osso da espinha. O osso era mais preciso e
+	# funcionava, ate o modelo ser reexportado pelo Blender para ficar mais leve:
+	# a reexportacao poe o esqueleto noutro espaco, e a leitura passou a devolver
+	# 398 m -- o cavalo era teleportado para longe e sumia da tela, sem erro
+	# nenhum no console. A caixa da malha sobrevive a qualquer reexportacao.
+	var centro := _centro_atual()
+	_modelo.position.x -= centro.x - global_position.x
+	# -Z e a frente no projeto inteiro, entao +Z recua o cavalo.
+	_modelo.position.z -= centro.z - global_position.z - AVANCO_DA_SELA
+	_altura_da_sela = altura * FRACAO_DA_SELA
 	# Confere o resultado em vez de confiar na conta: se o sinal estiver
 	# invertido, o cavalo sai do lugar errado para outro lugar errado, e a unica
 	# forma de saber e medindo de novo depois de mexer.
@@ -132,36 +133,27 @@ func _assentar() -> void:
 	# invertido, o cavalo sai de um lugar errado para outro, e a unica forma de
 	# saber e medindo de novo depois de mexer.
 	await get_tree().process_frame
-	var conferido := _osso_da_sela()
+	var conferido := _centro_atual()
 	GameLog.verbose(GameLog.Channel.WORLD,
-		"Montaria: altura %.2f m, sela a %.2f m; osso da sela ficou em (%.2f, %.2f) do cavaleiro." % [
+		"Montaria: altura %.2f m, sela a %.2f m; centro ficou em (%.2f, %.2f) do cavaleiro." % [
 			altura, altura_da_sela(),
 			conferido.x - global_position.x, conferido.z - global_position.z
 		])
 
 
-## Posicao do osso da sela, em mundo. `Vector3.INF` quando nenhum dos nomes
-## conhecidos existe neste esqueleto.
-func _osso_da_sela() -> Vector3:
-	var esqueleto := _achar_esqueleto(_modelo)
-	if esqueleto == null:
-		return Vector3.INF
-	for nome in OSSOS_DA_SELA:
-		for i in esqueleto.get_bone_count():
-			# `begins_with` porque o exportador numera os ossos ("spine_03_011").
-			if String(esqueleto.get_bone_name(i)).begins_with(nome):
-				return esqueleto.global_transform * esqueleto.get_bone_global_pose(i).origin
-	return Vector3.INF
-
-
-func _achar_esqueleto(no: Node) -> Skeleton3D:
-	if no is Skeleton3D:
-		return no as Skeleton3D
-	for filho in no.get_children():
-		var achado := _achar_esqueleto(filho)
-		if achado != null:
-			return achado
-	return null
+## Os extremos da malha em mundo: `{baixo, alto}`. Vazio quando nao ha malha.
+func _extremos() -> Dictionary:
+	var baixo := INF
+	var alto := -INF
+	for no in _todos(_modelo):
+		if no is MeshInstance3D and (no as MeshInstance3D).mesh != null:
+			var malha := no as MeshInstance3D
+			var caixa := malha.global_transform * malha.mesh.get_aabb()
+			baixo = minf(baixo, caixa.position.y)
+			alto = maxf(alto, caixa.position.y + caixa.size.y)
+	if baixo == INF:
+		return {}
+	return {"baixo": baixo, "alto": alto}
 
 
 func _centro_atual() -> Vector3:

@@ -38,6 +38,13 @@ const PASTA_MUNDO := "user://mundo/"
 ## é a diferença entre validar e confiar.
 const ACOES := ["comprar", "vender", "usar_item", "recompensa", "capturar"]
 
+## Teto para as recompensas que ainda chegam com o valor pronto (missão e idle).
+## Medido no jogo: a missão mais generosa paga algumas centenas, e o idle de uma
+## noite inteira fica na mesma ordem. Mil é folgado para o jogo honesto e
+## apertado para quem tenta pedir um milhão.
+const TETO_DE_OURO_POR_PEDIDO := 1000
+const TETO_DE_XP_POR_PEDIDO := 1000
+
 ## Ficha de cada peer conectado. Só existe no dono.
 var _fichas: Dictionary = {}    ## peer -> PlayerData
 var _nomes: Dictionary = {}     ## peer -> nome do personagem
@@ -148,13 +155,29 @@ func _aplicar(ficha: PlayerData, acao: String, a: Dictionary) -> String:
 			return ""
 
 		"recompensa":
-			# Fim de batalha, missão e idle. O cliente diz o que aconteceu; o dono
-			# aplica. Ainda é confiança no cliente sobre **ter** vencido — o
-			# combate em si continua rodando lá. Fechar isso é a etapa seguinte, e
-			# ela exige mover a batalha inteira para o servidor.
-			ficha.add_gold(maxi(0, int(a.get("ouro", 0))))
+			# Fim de batalha, missão e idle.
+			#
+			# Batalha manda `derrotados` — espécie e nível — e **o dono faz a
+			# conta**. Antes o cliente mandava o número pronto e ele era aplicado
+			# como veio: um cliente alterado pedia um milhão de ouro e recebia um
+			# milhão. Agora o valor sai da tabela do jogo, e mentir sobre o número
+			# não funciona mais. O que ainda dá para mentir é sobre *ter*
+			# derrotado, e isso só fecha movendo a batalha inteira para cá.
+			var derrotados: Array = a.get("derrotados", [])
+			if not derrotados.is_empty():
+				var conta := RecompensaDeBatalha.calcular(derrotados)
+				ficha.add_gold(int(conta["ouro"]))
+				if int(conta["xp_do_jogador"]) > 0:
+					ficha.grant_xp(int(conta["xp_do_jogador"]))
+				return ""
+
+			# Missão e idle ainda mandam número pronto, e aqui ele é limitado: um
+			# teto não impede a trapaça, mas transforma "ouro infinito" em "um
+			# pouco de ouro de cada vez", que é a diferença entre quebrar a
+			# economia e arranhar ela.
+			ficha.add_gold(clampi(int(a.get("ouro", 0)), 0, TETO_DE_OURO_POR_PEDIDO))
 			if int(a.get("xp", 0)) > 0:
-				ficha.grant_xp(maxi(0, int(a.get("xp", 0))))
+				ficha.grant_xp(clampi(int(a.get("xp", 0)), 0, TETO_DE_XP_POR_PEDIDO))
 			var itens: Dictionary = a.get("itens", {})
 			for item_id in itens:
 				if not DataManager.get_item(String(item_id)).is_empty():

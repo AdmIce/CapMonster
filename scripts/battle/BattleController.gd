@@ -548,14 +548,18 @@ func _finalizar(vitoria: bool, capturado: bool, fuga: bool = false) -> void:
 
 func _distribuir_recompensas(resumo: Dictionary, capturado: bool) -> Dictionary:
 	var dados := GameManager.player
-	var xp_total := 0
-	var ouro := 0
+	# A conta vem da mesma funcao que o dono do mundo usa. Duas contas iguais
+	# escritas em dois lugares e a receita para o numero que aparece na tela nao
+	# bater com o que o servidor credita.
+	var lista: Array = []
 	for ator in _inimigos:
 		# Quem foi capturado não conta como derrotado.
 		if capturado and ator.data.is_alive():
 			continue
-		xp_total += CreatureFactory.xp_reward(ator.data)
-		ouro += 8 + ator.data.level * 4
+		lista.append(ator.data)
+	var conta := RecompensaDeBatalha.calcular(RecompensaDeBatalha.listar(lista))
+	var xp_total := int(conta["xp_total"])
+	var ouro := int(conta["ouro"])
 
 	# Cada inimigo abatido conta para as missões de "derrote N criaturas".
 	for ator in _inimigos:
@@ -578,10 +582,14 @@ func _distribuir_recompensas(resumo: Dictionary, capturado: bool) -> Dictionary:
 	if subiu:
 		AudioManager.tocar(&"nivel")
 
-	Ficha.pedir("recompensa", {
-		"ouro": ouro,
-		"xp": maxi(1, int(round(float(xp_total) * 0.35))),
-	})
+	# Manda **o que** foi derrotado, e nao quanto vale: quem calcula e o dono do
+	# mundo, com o banco de dados dele. Ver RecompensaDeBatalha.
+	var abatidos: Array = []
+	for ator in _inimigos:
+		if capturado and ator.data.is_alive():
+			continue
+		abatidos.append(ator.data)
+	Ficha.pedir("recompensa", { "derrotados": RecompensaDeBatalha.listar(abatidos) })
 
 	resumo["xp"] = xp_cada
 	resumo["ouro"] = ouro
