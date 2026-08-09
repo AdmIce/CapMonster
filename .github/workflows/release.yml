@@ -54,13 +54,22 @@ jobs:
       # `tools/lancar.ps1 -Notas` gravou na tag, e abaixo o que mudou.
       - name: Montar as notas da versão
         id: notas
+        # Sem `set -e` de propósito, e com `|| true` em toda chamada externa.
+        # A v0.8.0 não foi publicada porque esta etapa falhou: o build inteiro
+        # tinha passado, o .exe estava pronto, e uma etapa que só escreve texto
+        # derrubou a entrega. Nota de versão é cosmética -- na pior das
+        # hipóteses ela sai pobre, nunca segura a release.
         run: |
-          set -euo pipefail
           VERSAO="${GITHUB_REF_NAME}"
+
+          # O container roda como root sobre um diretório de outro dono, e o git
+          # recusa trabalhar aí ("dubious ownership") -- foi o suspeito número um
+          # da falha, já que todo o resto da etapa é git.
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}" || true
 
           # Mensagem da tag, sem a linha "v0.7.0:" que o lancar.ps1 põe na
           # frente -- quem lê já sabe qual versão está lendo.
-          TITULO=$(git tag -l --format='%(contents:subject)' "${VERSAO}" | sed "s/^${VERSAO}: *//")
+          TITULO=$(git tag -l --format='%(contents:subject)' "${VERSAO}" 2>/dev/null | sed "s/^${VERSAO}: *//" || echo "")
 
           # Tag anterior nesta linha do tempo. Na primeira versão não existe, e
           # aí a lista é o histórico inteiro.
@@ -74,9 +83,16 @@ jobs:
           # Só o assunto de cada commit, sem os de merge e sem o commit que só
           # troca o número da versão -- ninguém precisa ler "v0.7.0" na lista do
           # que mudou na v0.7.0.
-          MUDANCAS=$(git log --no-merges --pretty=format:'%s' "${FAIXA}" \
+          MUDANCAS=$(git log --no-merges --pretty=format:'%s' "${FAIXA}" 2>/dev/null \
             | grep -v -E '^v[0-9]+\.[0-9]+\.[0-9]+' \
-            | sed 's/^/- /' || true)
+            | sed 's/^/- /' || echo "")
+
+          # Ecoado no log da etapa: quando a nota sair pobre, dá para ver aqui
+          # qual das duas partes veio vazia, sem precisar abrir o repositório.
+          echo "titulo: [${TITULO}]"
+          echo "faixa:  [${FAIXA}]"
+          echo "mudancas:"
+          echo "${MUDANCAS}"
 
           {
             echo "corpo<<FIM_DAS_NOTAS"
@@ -87,10 +103,12 @@ jobs:
             if [ -n "${MUDANCAS}" ]; then
               echo "${MUDANCAS}"
             else
-              echo "- Ajustes internos."
+              echo "Detalhes na lista de commits desta versao."
             fi
             echo "FIM_DAS_NOTAS"
           } >> "${GITHUB_OUTPUT}"
+
+          exit 0
 
       - name: Publicar release
         uses: softprops/action-gh-release@v2
