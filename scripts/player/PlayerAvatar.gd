@@ -35,20 +35,52 @@ const ALTURA_DO_RIG := 1.46
 ## no resto do projeto. Os modelos do KayKit vêm olhando para +Z.
 const GIRO_PARA_FRENTE := 180.0
 
+## Dois kits de personagem convivem, e eles não se parecem em nada por dentro:
+## o KayKit é um .glb com as animações embutidas; o Kenney é .fbx com o modelo
+## num arquivo e cada animação no seu. Por isso os nomes de animação não são
+## constantes globais: cada montagem grava os seus em `_anim_*`.
+const KIT_KAYKIT := "kaykit"
+const KIT_KENNEY := "kenney"
+
 const ANIM_PARADO := "Idle"
 const ANIM_ANDANDO := "Walking_A"
 const ANIM_CORRENDO := "Running_A"
 const ANIM_INTERAGIR := "Interact"
 
+const PASTA_KENNEY := "res://3d/personagens/"
+
+## Altura do personagem Kenney com escala 1, medida em cena.
+##
+## Nem a AABB da malha (0,0105) nem a pose de descanso dos ossos (0,009) servem
+## aqui: o importador de FBX entrega as duas colapsadas, e o nó `Root` ainda traz
+## uma escala de 100 por cima. Restou plantar o modelo ao lado do jogador com
+## `--modelo=<caminho>:<escala>` e comparar — 0,30 deu cerca de um metro.
+const ALTURA_NATURAL_KENNEY := 3.33
+
+## O pacote nomeia as animações com o nó de origem na frente.
+const ANIM_KENNEY := {
+	"parado": {"arquivo": "idle", "nome": "Root|Idle"},
+	"andando": {"arquivo": "run", "nome": "Root|Run"},
+	"correndo": {"arquivo": "run", "nome": "Root|Run"},
+	"interagir": {"arquivo": "jump", "nome": "Root|Jump"},
+}
+
 ## Os quatro personagens do pacote, na ordem em que aparecem na criação.
 const PERSONAGENS: Array[Dictionary] = [
-	{ "arquivo": "Knight", "nome": "Cavaleiro", "prefixo": "Knight" },
-	{ "arquivo": "Barbarian", "nome": "Bárbaro", "prefixo": "Barbarian" },
-	{ "arquivo": "Rogue", "nome": "Ladina", "prefixo": "Rogue" },
-	{ "arquivo": "Mage", "nome": "Maga", "prefixo": "Mage" },
+	{ "kit": KIT_KAYKIT, "arquivo": "Knight", "nome": "Cavaleiro", "prefixo": "Knight" },
+	{ "kit": KIT_KAYKIT, "arquivo": "Barbarian", "nome": "Bárbaro", "prefixo": "Barbarian" },
+	{ "kit": KIT_KAYKIT, "arquivo": "Rogue", "nome": "Ladina", "prefixo": "Rogue" },
+	{ "kit": KIT_KAYKIT, "arquivo": "Mage", "nome": "Maga", "prefixo": "Mage" },
+	{ "kit": KIT_KENNEY, "pele": "skaterMaleA", "nome": "Andarilho" },
+	{ "kit": KIT_KENNEY, "pele": "skaterFemaleA", "nome": "Andarilha" },
+	{ "kit": KIT_KENNEY, "pele": "criminalMaleA", "nome": "Fugitivo" },
+	{ "kit": KIT_KENNEY, "pele": "cyborgFemaleA", "nome": "Autômata" },
 ]
 ## Nome antigo, mantido para a tela de criação não precisar de dois caminhos.
-const BODY_TYPES: Array[String] = ["Cavaleiro", "Bárbaro", "Ladina", "Maga"]
+const BODY_TYPES: Array[String] = [
+	"Cavaleiro", "Bárbaro", "Ladina", "Maga",
+	"Andarilho", "Andarilha", "Fugitivo", "Autômata",
+]
 
 const SKIN_TONES: Array[Color] = [Color("#F0D2B4"), Color("#C08E62"), Color("#8A5C3C")]
 const HAIR_COLORS: Array[Color] = [Color("#2B2320"), Color("#8A5A2B"), Color("#C7B49A")]
@@ -75,6 +107,10 @@ var _raiz: Node3D = null
 var _animador: AnimationPlayer = null
 var _usando_modelo: bool = false
 var _animacao_atual: String = ""
+var _anim_parado: String = ANIM_PARADO
+var _anim_andando: String = ANIM_ANDANDO
+var _anim_correndo: String = ANIM_CORRENDO
+var _anim_interagir: String = ANIM_INTERAGIR
 var _fase: float = 0.0
 
 
@@ -117,6 +153,16 @@ func _reconstruir() -> void:
 		_montar_primitivas()
 
 
+## Verdadeiro quando o personagem escolhido aceita cabelo, tom de pele e roupa.
+##
+## Os protagonistas do Kenney nao aceitam: a aparencia deles e uma textura
+## inteira, nao pecas nomeadas que dao para tingir. Mostrar esses controles com
+## eles selecionados seria interface que nao faz nada — e o jogo nao tem disso.
+static func aceita_personalizacao(indice: int) -> bool:
+	var escolha: Dictionary = PERSONAGENS[clampi(indice, 0, PERSONAGENS.size() - 1)]
+	return String(escolha.get("kit", KIT_KAYKIT)) == KIT_KAYKIT
+
+
 func appearance() -> Dictionary:
 	return _appearance.duplicate()
 
@@ -133,6 +179,16 @@ func _outfit() -> Dictionary:
 
 func _montar_modelo() -> bool:
 	var escolha: Dictionary = PERSONAGENS[_index("body", PERSONAGENS.size())]
+	if String(escolha.get("kit", KIT_KAYKIT)) == KIT_KENNEY:
+		return _montar_kenney(escolha)
+	return _montar_kaykit(escolha)
+
+
+func _montar_kaykit(escolha: Dictionary) -> bool:
+	_anim_parado = ANIM_PARADO
+	_anim_andando = ANIM_ANDANDO
+	_anim_correndo = ANIM_CORRENDO
+	_anim_interagir = ANIM_INTERAGIR
 	var caminho: String = PASTA + String(escolha["arquivo"]) + ".glb"
 	if not ResourceLoader.exists(caminho):
 		GameLog.warn(GameLog.Channel.SYSTEM, "Modelo '%s' ausente; usando o boneco simples." % caminho)
@@ -159,7 +215,7 @@ func _montar_modelo() -> bool:
 
 	_animador = _achar_animador(modelo)
 	_usando_modelo = true
-	_tocar(ANIM_PARADO)
+	_tocar(_anim_parado)
 	return true
 
 
@@ -266,6 +322,105 @@ static func _achar_esqueleto(no: Node) -> Skeleton3D:
 	return null
 
 
+## Monta um protagonista do pacote Kenney (CC0).
+##
+## Três diferenças em relação ao KayKit, todas resolvidas aqui:
+##  · a pele é uma **textura**, não peças nomeadas — trocar de personagem é
+##    trocar o PNG, então nada de tingir braço e perna separado;
+##  · as animações moram em arquivos próprios (`idle.fbx`, `run.fbx`,
+##    `jump.fbx`), e precisam ser copiadas para um tocador nosso;
+##  · a escala vem medida em cena, porque o importador de FBX entrega AABB e
+##    pose de descanso colapsadas (ver ALTURA_NATURAL_KENNEY).
+func _montar_kenney(escolha: Dictionary) -> bool:
+	var caminho := PASTA_KENNEY + "Model/characterMedium.fbx"
+	if not ResourceLoader.exists(caminho):
+		GameLog.warn(GameLog.Channel.SYSTEM, "Modelo '%s' ausente; usando o boneco simples." % caminho)
+		return false
+
+	var instancia := (load(caminho) as PackedScene).instantiate()
+	if not (instancia is Node3D):
+		instancia.queue_free()
+		return false
+
+	var modelo := instancia as Node3D
+	_raiz.add_child(modelo)
+
+	_vestir_kenney(modelo, String(escolha.get("pele", "skaterMaleA")))
+	modelo.scale = Vector3.ONE * (ALTURA_ALVO / ALTURA_NATURAL_KENNEY)
+	modelo.position.y = 0.0
+	modelo.rotation_degrees.y = GIRO_PARA_FRENTE
+
+	_animador = _montar_animador_kenney(modelo)
+	_usando_modelo = true
+	_tocar(_anim_parado)
+	return true
+
+
+## A pele é um PNG de paleta: filtro nearest, senão as faixas de cor borram uma
+## na outra e o personagem fica lavado.
+func _vestir_kenney(modelo: Node3D, pele: String) -> void:
+	var caminho := PASTA_KENNEY + "Skins/" + pele + ".png"
+	if not ResourceLoader.exists(caminho):
+		GameLog.warn(GameLog.Channel.SYSTEM, "Pele '%s' ausente." % caminho)
+		return
+
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load(caminho)
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.roughness = 0.9
+	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+
+	for no in _todos(modelo):
+		if no is MeshInstance3D:
+			(no as MeshInstance3D).material_override = material
+
+
+## Copia as animações dos arquivos avulsos para um tocador plantado no modelo.
+##
+## As faixas apontam para `Root/Skeleton3D:<osso>`, caminho relativo à raiz da
+## cena de animação — que é igual à do modelo. Por isso o tocador entra como
+## filho da raiz do modelo com `root_node` apontando para ela: qualquer outro
+## lugar e as faixas não encontram os ossos, a animação "toca" e nada se move.
+func _montar_animador_kenney(modelo: Node3D) -> AnimationPlayer:
+	var biblioteca := AnimationLibrary.new()
+	var nomes: Dictionary = {}
+
+	for papel in ANIM_KENNEY:
+		var receita: Dictionary = ANIM_KENNEY[papel]
+		var arquivo := PASTA_KENNEY + "Animations/" + String(receita["arquivo"]) + ".fbx"
+		if not ResourceLoader.exists(arquivo):
+			continue
+		var cena := (load(arquivo) as PackedScene).instantiate()
+		var tocador := _achar_animador(cena)
+		if tocador != null:
+			var origem := String(receita["nome"])
+			if tocador.has_animation(origem):
+				var animacao: Animation = tocador.get_animation(origem).duplicate(true)
+				animacao.loop_mode = Animation.LOOP_LINEAR if papel != "interagir" else Animation.LOOP_NONE
+				biblioteca.add_animation(String(papel), animacao)
+				nomes[papel] = String(papel)
+		cena.queue_free()
+
+	if biblioteca.get_animation_list().is_empty():
+		GameLog.warn(GameLog.Channel.SYSTEM, "Nenhuma animação do pacote Kenney foi carregada.")
+		return null
+
+	# Sem a animação pedida, cai no que existir: melhor um personagem parado numa
+	# pose errada do que travado em T.
+	var reserva := String(biblioteca.get_animation_list()[0])
+	_anim_parado = String(nomes.get("parado", reserva))
+	_anim_andando = String(nomes.get("andando", _anim_parado))
+	_anim_correndo = String(nomes.get("correndo", _anim_andando))
+	_anim_interagir = String(nomes.get("interagir", _anim_parado))
+
+	var animador := AnimationPlayer.new()
+	animador.name = "Animador"
+	modelo.add_child(animador)
+	animador.root_node = animador.get_path_to(modelo)
+	animador.add_animation_library("", biblioteca)
+	return animador
+
+
 static func _achar_animador(no: Node) -> AnimationPlayer:
 	for filho in _todos(no):
 		if filho is AnimationPlayer:
@@ -330,16 +485,16 @@ func _atualizar_animacao() -> void:
 		return
 	match _state:
 		State.RUN:
-			_tocar(ANIM_CORRENDO)
+			_tocar(_anim_correndo)
 			_animador.speed_scale = lerpf(0.9, 1.25, _speed_ratio)
 		State.WALK:
-			_tocar(ANIM_ANDANDO)
+			_tocar(_anim_andando)
 			_animador.speed_scale = lerpf(0.85, 1.35, _speed_ratio)
 		State.INTERACT:
-			_tocar(ANIM_INTERAGIR)
+			_tocar(_anim_interagir)
 			_animador.speed_scale = 1.0
 		_:
-			_tocar(ANIM_PARADO)
+			_tocar(_anim_parado)
 			_animador.speed_scale = 1.0
 
 

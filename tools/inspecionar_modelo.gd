@@ -30,12 +30,21 @@ func _init() -> void:
 func _descrever(no: Node, nivel: int) -> void:
 	var recuo := "  ".repeat(nivel)
 	var extra := ""
+	if no is Node3D:
+		var escala := (no as Node3D).transform.basis.get_scale()
+		if not escala.is_equal_approx(Vector3.ONE):
+			extra += "  escala=%.4f" % escala.y
 	if no is MeshInstance3D:
-		var malha := (no as MeshInstance3D).mesh
+		var instancia := no as MeshInstance3D
+		var malha := instancia.mesh
 		if malha != null:
-			var caixa := malha.get_aabb()
-			extra = "  malha=%d superficie(s)  altura=%.3f  y=[%.3f..%.3f]" % [
-				malha.get_surface_count(), caixa.size.y, caixa.position.y, caixa.end.y
+			# `mesh.get_aabb()` é a caixa do recurso; `instancia.get_aabb()` já leva
+			# em conta a caixa customizada que a importação grava para malha com
+			# pele. As duas divergem, e é a segunda que vale.
+			var recurso := malha.get_aabb()
+			var no_aabb := instancia.get_aabb()
+			extra += "  malha=%d sup  recurso_h=%.4f  no_h=%.4f" % [
+				malha.get_surface_count(), recurso.size.y, no_aabb.size.y
 			]
 	elif no is Skeleton3D:
 		var esqueleto := no as Skeleton3D

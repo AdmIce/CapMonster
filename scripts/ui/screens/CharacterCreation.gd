@@ -24,6 +24,8 @@ var _pivot: Node3D = null
 var _name_field: LineEdit = null
 var _outfit_label: Label = null
 var _option_rows: Dictionary = {}   ## chave -> Array[Button]
+var _linhas: Dictionary = {}        ## chave -> Control da linha inteira
+var _aviso_kit: Label = null
 
 
 func _ready() -> void:
@@ -150,6 +152,11 @@ func _build_options() -> Control:
 	column.add_child(Design.divider())
 
 	column.add_child(_option_row("PERSONAGEM", "body", PlayerAvatar.BODY_TYPES))
+
+	_aviso_kit = Design.caption("")
+	_aviso_kit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_aviso_kit)
+
 	column.add_child(_option_row("CABELO", "hair", PlayerAvatar.HAIR_LABELS))
 	column.add_child(_color_row("COR DO CABELO", "hair_color", PlayerAvatar.HAIR_COLORS))
 	column.add_child(_color_row("TOM DE PELE", "skin", PlayerAvatar.SKIN_TONES))
@@ -163,7 +170,28 @@ func _build_options() -> Control:
 	_outfit_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_outfit_label)
 
+	_ajustar_ao_kit()
 	return panel
+
+
+## Esconde cabelo, cor, pele e roupa quando o personagem selecionado nao aceita
+## nenhum dos quatro. Deixar os botoes visiveis e inertes seria pior que nao ter.
+func _ajustar_ao_kit() -> void:
+	if _aviso_kit == null:
+		return
+	var indice := int(_appearance.get("body", 0))
+	var personalizavel := PlayerAvatar.aceita_personalizacao(indice)
+
+	for chave in ["hair", "hair_color", "skin", "outfit"]:
+		var linha: Control = _linhas.get(chave, null)
+		if linha != null:
+			linha.visible = personalizavel
+	if _outfit_label != null:
+		_outfit_label.visible = personalizavel
+
+	_aviso_kit.visible = not personalizavel
+	if not personalizavel:
+		_aviso_kit.text = "Este personagem vem com visual proprio — cabelo, pele e roupa nao se aplicam a ele." 
 
 
 func _option_row(caption: String, key: String, labels: Array) -> Control:
@@ -186,6 +214,7 @@ func _option_row(caption: String, key: String, labels: Array) -> Control:
 		created.append(button)
 	_option_rows[key] = created
 	row.add_child(buttons)
+	_linhas[key] = row
 	_refresh_row(key)
 	return row
 
@@ -219,6 +248,7 @@ func _color_row(caption: String, key: String, colors: Array) -> Control:
 		created.append(button)
 	_option_rows[key] = created
 	row.add_child(buttons)
+	_linhas[key] = row
 	_refresh_row(key)
 	return row
 
@@ -226,6 +256,10 @@ func _color_row(caption: String, key: String, colors: Array) -> Control:
 func _select(key: String, index: int) -> void:
 	_appearance[key] = index
 	_refresh_row(key)
+	if key == "body":
+		# Trocar de personagem pode trocar de kit, e cada kit aceita um conjunto
+		# diferente de opções.
+		_ajustar_ao_kit()
 	if _avatar != null:
 		_avatar.apply_appearance(_appearance)
 	if _outfit_label != null:

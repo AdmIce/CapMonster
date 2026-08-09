@@ -36,6 +36,7 @@ var _inventory_button: Button = null
 var _inventory: InventoryPanel = null
 
 var _chat: ChatPanel = null
+var _bussola: MinimapaRedondo = null
 var _team_widgets: Array = []
 var _health_style: StyleBoxFlat = null
 var _health_low_style: StyleBoxFlat = null
@@ -62,8 +63,9 @@ func bind(player: PlayerData, controller: PlayerController) -> void:
 		controller.interaction_target_changed.connect(_on_interaction_target)
 
 	_map_label.text = DataManager.get_map_name(player.current_map)
-	if _minimapa != null:
-		_minimapa.configurar(DataManager.get_map(player.current_map), controller, false)
+	if _bussola != null:
+		_minimapa = _bussola.mapa
+		_bussola.configurar(DataManager.get_map(player.current_map), controller)
 	_refresh_wallet()
 	_rebuild_team()
 	set_prompt("")
@@ -115,14 +117,10 @@ func _build() -> void:
 	canto.size_flags_vertical = Control.SIZE_SHRINK_END
 	bottom.add_child(canto)
 
-	# O minimapa ganha a mesma moldura de pergaminho dos painéis, senão ele fica
-	# como um retângulo preto colado na tela.
-	var moldura_mapa := Design.card(Design.GOLD)
-	canto.add_child(moldura_mapa)
-
-	_minimapa = MapView.new()
-	_minimapa.custom_minimum_size = Vector2(MINIMAPA_TAMANHO, MINIMAPA_TAMANHO)
-	moldura_mapa.add_child(_minimapa)
+	_bussola = MinimapaRedondo.new()
+	_bussola.name = "Minimapa"
+	canto.add_child(_bussola)
+	_minimapa = _bussola.mapa
 
 	var dica_mapa := Design.sobre_o_mundo(Design.caption("M — mapa", Design.TEXT_CLARO_MUTED), 3)
 	dica_mapa.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

@@ -171,6 +171,7 @@ func _build_presenca() -> void:
 	presenca = PresencaOnline.criar(map_id, player)
 	add_child(presenca)
 	_rede_de_teste()
+	_modelo_de_teste()
 
 
 ## `-- --modelo=<res://caminho>:<escala>` planta um modelo ao lado do jogador.

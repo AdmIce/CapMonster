@@ -32,6 +32,11 @@ const CORES_DE_PECA := {
 var map_data: Dictionary = {}
 var detalhado: bool = false
 
+## Quando ligado, o mapa cobre o controle inteiro em vez de caber dentro dele.
+## O minimapa e redondo: cabendo, sobram faixas vazias em cima e embaixo, que
+## dentro de um circulo viram duas fatias pretas sem sentido nenhum.
+var preencher: bool = false
+
 var _player: Node3D = null
 var _escala: float = 1.0
 var _origem := Vector2.ZERO
@@ -62,8 +67,10 @@ func _preparar() -> bool:
 	if largura <= 0.0 or profundidade <= 0.0:
 		return false
 
-	var margem := 8.0
-	_escala = minf((size.x - margem * 2.0) / largura, (size.y - margem * 2.0) / profundidade)
+	var margem := 0.0 if preencher else 8.0
+	var horizontal := (size.x - margem * 2.0) / largura
+	var vertical := (size.y - margem * 2.0) / profundidade
+	_escala = maxf(horizontal, vertical) if preencher else minf(horizontal, vertical)
 	# Centraliza o mapa dentro do controle.
 	_origem = Vector2(
 		(size.x - largura * _escala) * 0.5 - float(limites.get("min_x", 0)) * _escala,
