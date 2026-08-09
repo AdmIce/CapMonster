@@ -2,7 +2,7 @@ name: Verificar
 
 # Roda em todo push e em todo Pull Request. É o que impede que um script
 # quebrado chegue na main quando duas pessoas mexem no mesmo projeto — e o que
-# dá para um assistente de IA um sinal objetivo de "passou" em vez de opinião.
+# dá a um assistente de IA um sinal objetivo de "passou" em vez de opinião.
 on:
   push:
     branches: [main]
@@ -10,20 +10,29 @@ on:
   workflow_dispatch:
 
 jobs:
-  validar:
+  # Dois trabalhos separados de propósito: a imagem do godot-ci é enxuta e não
+  # traz Python, então rodar os validadores nela falhava logo no primeiro passo.
+  # Fora do contêiner eles ainda rodam em segundos e em paralelo com o resto.
+  validadores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Banco de dados
+        run: python tools/validate_data.py
+
+      - name: Scripts
+        run: python tools/check_scripts.py
+
+  fumaca:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
-
-      # Os dois validadores em Python não precisam da engine e são rápidos:
-      # referências quebradas no /data e erros baratos de GDScript.
-      - name: Banco de dados
-        run: python3 tools/validate_data.py
-
-      - name: Scripts
-        run: python3 tools/check_scripts.py
 
       # O cache de importação não vai no repositório. A primeira passada falha
       # em asset que depende de outro já importado; a segunda fecha.
@@ -32,9 +41,8 @@ jobs:
           godot --headless --import --quit || true
           godot --headless --import --quit || true
 
-      # O teste de fumaça é o juiz final: ele entra no mundo de verdade. Erro de
-      # parse e falha em tempo de execução aparecem aqui, e nenhum dos dois passa
-      # pelos validadores anteriores.
+      # O juiz final: entra no mundo de verdade. Erro de parse e falha em tempo
+      # de execução aparecem aqui, e nenhum dos dois passa pelos validadores.
       - name: Teste de fumaça
         run: |
           godot --headless --quit-after 900 -- --smoke 2>&1 | tee /tmp/fumaca.log
