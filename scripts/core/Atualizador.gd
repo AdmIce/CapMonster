@@ -102,6 +102,12 @@ func _ao_receber_release(resultado: int, codigo: int, _cabecalhos: PackedStringA
 	])
 	verificacao_terminou.emit(nova, ultima_info)
 
+	# `-- --atualizar-agora` dispensa o clique no botão. É como o caminho de
+	# baixar-e-trocar é testado de verdade: sem isso só dava para conferir a
+	# detecção, e a troca de arquivos é justamente a parte que pode dar errado.
+	if nova and OS.is_debug_build() and OS.get_cmdline_user_args().has("--atualizar-agora"):
+		aplicar()
+
 
 ## Compara "1.2.10" com "1.3.0" numericamente por parte.
 ##
@@ -189,22 +195,48 @@ func _finalizar() -> void:
 
 ## Escreve o .bat que espera o jogo fechar, copia os arquivos e reabre.
 ##
-## O `ping` é o cronômetro portátil do prompt do Windows: `timeout` não funciona
-## quando o script roda sem console próprio, que é exatamente o caso aqui.
+## Três detalhes do Windows que este script tem que respeitar, todos aprendidos
+## errando:
+##
+##  · **barra invertida.** `globalize_path` devolve `C:/Users/...`, e o `cmd` não
+##    executa um .bat escrito com barra normal — ele lê o caminho como opção. O
+##    script era escrito certinho e simplesmente não rodava;
+##  · **`%~f0`, não `%%~f0`.** O `%%` só é escape dentro de bloco `for`; no
+##    corpo do script ele sai literal e o arquivo nunca se apaga;
+##  · **tentar de novo.** O jogo ainda está morrendo quando o script começa, e
+##    enquanto o processo existe o Windows não deixa sobrescrever o .pck nem o
+##    .exe. Uma espera fixa é aposta; repetir até conseguir é garantia.
 func _escrever_script() -> String:
-	var executavel := OS.get_executable_path()
-	var pasta_jogo := executavel.get_base_dir()
-	var origem := ProjectSettings.globalize_path(PASTA_TEMP)
-	var caminho := ProjectSettings.globalize_path(PASTA_TEMP + "aplicar.bat")
+	var executavel := _windows(OS.get_executable_path())
+	var pasta_jogo := _windows(OS.get_executable_path().get_base_dir())
+	var origem := _windows(ProjectSettings.globalize_path(PASTA_TEMP).rstrip("/\\"))
+	var caminho := _windows(ProjectSettings.globalize_path(PASTA_TEMP + "aplicar.bat"))
 
 	var linhas: Array[String] = [
 		"@echo off",
-		"ping 127.0.0.1 -n 4 > nul",
+		"setlocal",
+		'set "ORIGEM=%s"' % origem,
+		'set "DESTINO=%s"' % pasta_jogo,
 	]
+
+	var indice := 0
 	for nome in _baixados:
-		linhas.append('copy /y "%s%s" "%s\\%s" > nul' % [origem, nome, pasta_jogo, nome])
+		indice += 1
+		var rotulo := "copiar%d" % indice
+		var pronto := "pronto%d" % indice
+		linhas.append_array([
+			"set TENTATIVA%d=0" % indice,
+			":%s" % rotulo,
+			"set /a TENTATIVA%d+=1" % indice,
+			'copy /y "%%ORIGEM%%\\%s" "%%DESTINO%%\\%s" >nul 2>&1' % [nome, nome],
+			"if not errorlevel 1 goto %s" % pronto,
+			"ping 127.0.0.1 -n 2 >nul",
+			"if %%TENTATIVA%d%% lss 30 goto %s" % [indice, rotulo],
+			":%s" % pronto,
+		])
+
 	linhas.append('start "" "%s"' % executavel)
-	linhas.append('del "%%~f0"')
+	linhas.append('del "%~f0"')
 
 	var arquivo := FileAccess.open(PASTA_TEMP + "aplicar.bat", FileAccess.WRITE)
 	if arquivo == null:
@@ -212,3 +244,7 @@ func _escrever_script() -> String:
 	arquivo.store_string("\r\n".join(linhas) + "\r\n")
 	arquivo.close()
 	return caminho
+
+
+static func _windows(caminho: String) -> String:
+	return caminho.replace("/", "\\")

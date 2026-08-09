@@ -138,6 +138,18 @@ func _relancar(modo: String) -> void:
 	else:
 		argumentos.append_array(["--rendering-method", "gl_compatibility", "--rendering-driver", "opengl3"])
 
+	# Os argumentos do jogador vêm junto, e **depois do separador** — é o `--`
+	# que faz a Godot devolvê-los em `get_cmdline_user_args()`. Sem isso, quem
+	# abriu o jogo com uma opção de linha de comando a perdia só porque o
+	# renderizador trocou.
+	var do_usuario := PackedStringArray()
+	for extra in OS.get_cmdline_user_args():
+		if extra != ARG_APLICADO:
+			do_usuario.append(extra)
+	if not do_usuario.is_empty():
+		argumentos.append("--")
+		argumentos.append_array(do_usuario)
+
 	GameLog.info(GameLog.Channel.SYSTEM, "Renderizador: reiniciando em modo %s." % modo)
 	if OS.create_instance(argumentos) <= 0:
 		GameLog.error(GameLog.Channel.SYSTEM, "Renderizador: não consegui reiniciar o jogo.")

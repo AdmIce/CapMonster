@@ -173,6 +173,40 @@ func _build_presenca() -> void:
 	_rede_de_teste()
 
 
+## `-- --modelo=<res://caminho>:<escala>` planta um modelo ao lado do jogador.
+##
+## Serve para calibrar arte nova sem abrir o editor: malha com pele tem AABB da
+## pose de vínculo, que costuma vir degenerada, então "qual é a escala certa" só
+## se responde comparando com o personagem em cena.
+func _modelo_de_teste() -> void:
+	if not OS.is_debug_build():
+		return
+	for argumento in OS.get_cmdline_user_args():
+		if not argumento.begins_with("--modelo="):
+			continue
+		var valor := argumento.substr("--modelo=".length())
+		var corte := valor.rfind(":")
+		var caminho := valor.substr(0, corte) if corte > 6 else valor
+		var escala := float(valor.substr(corte + 1)) if corte > 6 else 1.0
+		if not ResourceLoader.exists(caminho):
+			GameLog.error(GameLog.Channel.WORLD, "Teste: modelo '%s' não existe." % caminho)
+			return
+
+		var cena := load(caminho)
+		if not (cena is PackedScene):
+			GameLog.error(GameLog.Channel.WORLD, "Teste: '%s' não é uma cena." % caminho)
+			return
+		var no := (cena as PackedScene).instantiate() as Node3D
+		if no == null:
+			return
+		no.name = "ModeloDeTeste"
+		no.scale = Vector3.ONE * maxf(0.0001, escala)
+		no.position = player.global_position + Vector3(2.5, 0, 0)
+		add_child(no)
+		GameLog.info(GameLog.Channel.WORLD, "Teste: '%s' plantado com escala %.3f." % [caminho, escala])
+		return
+
+
 ## `-- --host` e `-- --entrar=<ip>` sobem a rede sozinhos na entrada do mundo.
 ## É o que permite testar dois clientes de verdade sem ninguém clicar em nada:
 ##   instância A: -- --smoke --host
