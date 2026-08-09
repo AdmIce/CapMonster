@@ -11,6 +11,18 @@ signal moved(position: Vector2)
 
 const WALK_SPEED := 5.4
 const RUN_SPEED := 8.2
+
+## --- voo ---------------------------------------------------------------------
+##
+## Dois toques no espaco levantam voo. A janela e curta de proposito: mais que
+## isso e um toque solto vira decolagem sem querer no meio de uma corrida.
+const JANELA_DUPLO_TOQUE := 0.30
+const ALTURA_DE_DECOLAGEM := 5.5
+const ALTURA_MAXIMA := 34.0
+const VELOCIDADE_VERTICAL := 7.5
+const VELOCIDADE_VOO := 11.5
+## Abaixo disto o personagem encosta e o voo termina sozinho.
+const ALTURA_DE_POUSO := 0.12
 const ACCELERATION := 42.0
 const FRICTION := 38.0
 const TURN_SPEED := 14.0
@@ -23,6 +35,11 @@ const POSITION_REPORT_DISTANCE := 1.5
 ## vetor que o teclado escreveria. O resto do controlador não muda.
 var auto_enabled: bool = false
 var auto_input: Vector2 = Vector2.ZERO
+
+var voando: bool = false
+
+var _altura_alvo: float = 0.0
+var _ultimo_toque_de_voo: float = -10.0
 
 var avatar: PlayerAvatar = null
 ## Definido pelo WorldRoot. Serve só para converter o input para o referencial da
@@ -134,7 +151,7 @@ func _physics_process(delta: float) -> void:
 			direcao = Vector3(auto_input.x, 0.0, auto_input.y).limit_length(1.0)
 			running = true
 
-	var target_speed := RUN_SPEED if running else WALK_SPEED
+	var target_speed := VELOCIDADE_VOO if voando else (RUN_SPEED if running else WALK_SPEED)
 	var desired := direcao * target_speed
 
 	if desired.length_squared() > 0.001:
@@ -144,11 +161,53 @@ func _physics_process(delta: float) -> void:
 	velocity.y = 0.0
 
 	move_and_slide()
-	global_position.y = 0.0
+	_atualizar_altura(delta)
 
 	_update_facing(delta)
 	_update_avatar(running)
+	if avatar != null:
+		avatar.definir_voo(voando, delta)
 	_report_position()
+
+
+## O mundo e plano e todo o resto anda em y = 0; o voo e a unica coisa que tira
+## o personagem desse plano, entao a altura vive aqui e em mais lugar nenhum.
+func _atualizar_altura(delta: float) -> void:
+	if not voando:
+		global_position.y = 0.0
+		return
+
+	if input_enabled:
+		if Input.is_action_pressed("voar"):
+			_altura_alvo += VELOCIDADE_VERTICAL * delta
+		if Input.is_action_pressed("descer"):
+			_altura_alvo -= VELOCIDADE_VERTICAL * delta
+	_altura_alvo = clampf(_altura_alvo, 0.0, ALTURA_MAXIMA)
+
+	# Sobe e desce com atraso: sem isto a altura acompanha a tecla no mesmo
+	# quadro e o voo parece um elevador.
+	global_position.y = move_toward(global_position.y, _altura_alvo, VELOCIDADE_VERTICAL * 1.6 * delta)
+
+	if _altura_alvo <= 0.0 and global_position.y <= ALTURA_DE_POUSO:
+		pousar()
+
+
+func alternar_voo() -> void:
+	if voando:
+		# Descer ate o chao em vez de cair: o pouso acontece no _atualizar_altura.
+		_altura_alvo = 0.0
+		return
+	voando = true
+	_altura_alvo = ALTURA_DE_DECOLAGEM
+	AudioManager.tocar(&"ui_alternar")
+
+
+func pousar() -> void:
+	if not voando:
+		return
+	voando = false
+	_altura_alvo = 0.0
+	global_position.y = 0.0
 
 
 func _update_facing(delta: float) -> void:
@@ -178,7 +237,20 @@ func _report_position() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not input_enabled or not event.is_action_pressed("interact"):
+	if not input_enabled:
+		return
+
+	if event.is_action_pressed("voar"):
+		var agora := Time.get_ticks_msec() / 1000.0
+		if agora - _ultimo_toque_de_voo <= JANELA_DUPLO_TOQUE:
+			_ultimo_toque_de_voo = -10.0   # consome o par, senao o 3o toque conta
+			get_viewport().set_input_as_handled()
+			alternar_voo()
+		else:
+			_ultimo_toque_de_voo = agora
+		return
+
+	if not event.is_action_pressed("interact"):
 		return
 	if _current_target == null:
 		return

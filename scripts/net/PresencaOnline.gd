@@ -43,7 +43,7 @@ func _process(delta: float) -> void:
 	Rede.informar_posicao(
 		delta, plano, _jogador.rotation.y,
 		Vector2(_jogador.velocity.x, _jogador.velocity.z).length() > PlayerController.WALK_SPEED + 0.5,
-		_mapa
+		_mapa, _jogador.global_position.y
 	)
 
 

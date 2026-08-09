@@ -229,6 +229,7 @@ func _higienizar(cartao: Dictionary) -> Dictionary:
 		"pos": pos if pos is Vector2 else Vector2.ZERO,
 		"giro": clampf(float(cartao.get("giro", 0.0)), -TAU, TAU),
 		"correndo": bool(cartao.get("correndo", false)),
+		"altura": clampf(float(cartao.get("altura", 0.0)), 0.0, 60.0),
 	}
 
 
@@ -236,7 +237,7 @@ func _higienizar(cartao: Dictionary) -> Dictionary:
 
 ## Chamado pelo WorldRoot todo quadro. Ele decide a hora de enviar, não o
 ## chamador: assim a taxa fica num lugar só.
-func informar_posicao(delta: float, pos: Vector2, giro: float, correndo: bool, mapa: String) -> void:
+func informar_posicao(delta: float, pos: Vector2, giro: float, correndo: bool, mapa: String, altura: float = 0.0) -> void:
 	if not online():
 		return
 	_relogio += delta
@@ -246,7 +247,14 @@ func informar_posicao(delta: float, pos: Vector2, giro: float, correndo: bool, m
 
 	# Parado não gasta pacote. A margem evita mandar por causa de tremida de
 	# física quando o personagem está encostado numa parede.
-	if pos.distance_to(_ultimo_enviado) < 0.02 and jogadores.get(meu_id(), {}).get("giro", 0.0) == giro:
+	#
+	# A altura entra no teste junto com o plano: subir parado no ar não mexe em
+	# x nem z, e sem isto o voo vertical simplesmente não era transmitido — para
+	# os outros a pessoa ficava colada no chão.
+	var anterior: Dictionary = jogadores.get(meu_id(), {})
+	var parado := pos.distance_to(_ultimo_enviado) < 0.02
+	var mesma_altura := absf(float(anterior.get("altura", 0.0)) - altura) < 0.02
+	if parado and mesma_altura and float(anterior.get("giro", 0.0)) == giro:
 		return
 	_ultimo_enviado = pos
 
@@ -255,13 +263,14 @@ func informar_posicao(delta: float, pos: Vector2, giro: float, correndo: bool, m
 	meu["giro"] = giro
 	meu["correndo"] = correndo
 	meu["mapa"] = mapa
+	meu["altura"] = altura
 	jogadores[meu_id()] = meu
 
-	_mover.rpc(pos, giro, correndo, mapa)
+	_mover.rpc(pos, giro, correndo, mapa, altura)
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _mover(pos: Vector2, giro: float, correndo: bool, mapa: String) -> void:
+func _mover(pos: Vector2, giro: float, correndo: bool, mapa: String, altura: float) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if id == 0 or not jogadores.has(id):
 		return
@@ -270,6 +279,8 @@ func _mover(pos: Vector2, giro: float, correndo: bool, mapa: String) -> void:
 	info["giro"] = giro
 	info["correndo"] = correndo
 	info["mapa"] = mapa
+	# Voo: sem isto quem esta la em cima aparece andando no chao para os outros.
+	info["altura"] = clampf(altura, 0.0, 60.0)
 	jogador_moveu.emit(id, info)
 
 

@@ -40,6 +40,7 @@ var _especie_do_mascote: String = ""
 var _alvo := Vector2.ZERO
 var _giro_alvo: float = 0.0
 var _correndo: bool = false
+var _altura_alvo: float = 0.0
 
 
 static func criar(id: int, info: Dictionary) -> RemotePlayer:
@@ -77,6 +78,7 @@ func aplicar(info: Dictionary) -> void:
 	_alvo = info.get("pos", _alvo)
 	_giro_alvo = float(info.get("giro", _giro_alvo))
 	_correndo = bool(info.get("correndo", false))
+	_altura_alvo = float(info.get("altura", 0.0))
 	if _etiqueta != null:
 		_etiqueta.text = String(info.get("nome", "?"))
 	if _avatar != null and info.has("aparencia"):
@@ -128,7 +130,7 @@ func _process(delta: float) -> void:
 	var distancia := atual.distance_to(_alvo)
 
 	if distancia > DISTANCIA_DE_SALTO:
-		position = Vector3(_alvo.x, 0.0, _alvo.y)
+		position = Vector3(_alvo.x, _altura_alvo, _alvo.y)
 		rotation.y = _giro_alvo
 		if _avatar != null:
 			_avatar.set_locomotion(0.0, false)
@@ -136,7 +138,7 @@ func _process(delta: float) -> void:
 
 	var peso := clampf(SUAVIDADE * delta, 0.0, 1.0)
 	var novo := atual.lerp(_alvo, peso)
-	position = Vector3(novo.x, 0.0, novo.y)
+	position = Vector3(novo.x, lerpf(position.y, _altura_alvo, peso), novo.y)
 	rotation.y = lerp_angle(rotation.y, _giro_alvo, peso)
 
 	# A animação vem do deslocamento real deste quadro, não do que foi anunciado:

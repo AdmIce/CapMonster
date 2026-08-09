@@ -197,7 +197,10 @@ func _seguir_terceira_pessoa(delta: float) -> void:
 
 
 func _clamped(position: Vector3) -> Vector3:
-	var result := Vector3(position.x, 0.0, position.z)
+	# A altura passa direto: o mundo é plano, mas o voo tira o personagem do
+	# plano, e uma câmera presa em y = 0 o deixaria sair de quadro por cima.
+	# Os limites são só de x e z, que é o retângulo do mapa.
+	var result := Vector3(position.x, position.y, position.z)
 	if not _bounds_enabled:
 		return result
 	var half := _visible_half_extents()

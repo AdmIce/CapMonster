@@ -105,6 +105,7 @@ var _interact_timer: float = 0.0
 
 var _raiz: Node3D = null
 var _animador: AnimationPlayer = null
+var _asas: Asas = null
 var _usando_modelo: bool = false
 var _animacao_atual: String = ""
 var _anim_parado: String = ANIM_PARADO
@@ -214,6 +215,7 @@ func _montar_kaykit(escolha: Dictionary) -> bool:
 	modelo.rotation_degrees.y = GIRO_PARA_FRENTE
 
 	_animador = _achar_animador(modelo)
+	_montar_asas(modelo)
 	_usando_modelo = true
 	_tocar(_anim_parado)
 	return true
@@ -315,6 +317,51 @@ func _montar_cabelo(modelo: Node3D, prefixo: String) -> void:
 			cabelo.add_child(_malha(_esfera(), cor, Vector3(0, 0.12, 0), Vector3(0.19, 0.1, 0.19)))
 
 
+## Pendura as asas nas costas, no osso do tronco.
+##
+## Os dois kits nomeiam o esqueleto de forma diferente, então procura por uma
+## lista de candidatos em vez de cravar um nome. Sem osso servível elas entram
+## direto no modelo: ficam paradas em relação ao corpo, o que é pior que
+## acompanhar a animação, mas melhor que não ter asa.
+const OSSOS_DAS_COSTAS := ["chest", "spine", "Spine", "spine_02", "mixamorig:Spine1", "Bip01_Spine1"]
+
+
+func _montar_asas(modelo: Node3D) -> void:
+	# A capa ocupa exatamente o espaço das asas: com as duas, uma atravessa a
+	# outra a cada passo. O lugar nas costas é um só, e agora é das asas.
+	for no in _todos(modelo):
+		if no is MeshInstance3D and String(no.name).contains("_Cape"):
+			(no as MeshInstance3D).visible = false
+
+	_asas = Asas.criar()
+	var esqueleto := _achar_esqueleto(modelo)
+	var osso := -1
+	if esqueleto != null:
+		for nome in OSSOS_DAS_COSTAS:
+			osso = esqueleto.find_bone(nome)
+			if osso != -1:
+				break
+
+	if esqueleto == null or osso == -1:
+		modelo.add_child(_asas)
+		_asas.position.y = ALTURA_ALVO * 0.62
+		return
+
+	var suporte := BoneAttachment3D.new()
+	suporte.name = "SuporteAsas"
+	esqueleto.add_child(suporte)
+	# `bone_idx` só depois de entrar na árvore: definido antes, o
+	# BoneAttachment3D tenta desligar um sinal que ainda não ligou.
+	suporte.bone_idx = osso
+	suporte.add_child(_asas)
+
+
+## Troca a pose das asas. O controlador chama isto todo quadro.
+func definir_voo(voando: bool, delta: float) -> void:
+	if _asas != null and is_instance_valid(_asas):
+		_asas.definir_voo(voando, delta)
+
+
 static func _achar_esqueleto(no: Node) -> Skeleton3D:
 	for filho in _todos(no):
 		if filho is Skeleton3D:
@@ -351,6 +398,7 @@ func _montar_kenney(escolha: Dictionary) -> bool:
 	modelo.rotation_degrees.y = GIRO_PARA_FRENTE
 
 	_animador = _montar_animador_kenney(modelo)
+	_montar_asas(modelo)
 	_usando_modelo = true
 	_tocar(_anim_parado)
 	return true

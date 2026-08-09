@@ -14,8 +14,13 @@ const DEFAULT_BINDINGS := {
 	# Enter saiu de "interact" quando o chat entrou: é a tecla de abrir a caixa de
 	# conversa em todo jogo online, e deixar as duas coisas na mesma tecla fazia
 	# mandar mensagem interagir com o NPC atrás de você.
-	"interact": [KEY_E, KEY_SPACE],
+	# Espaco saiu de "interact" quando o voo entrou: dois toques nele levantam
+	# voo, e um toque nao pode conversar com o NPC atras de voce ao mesmo tempo.
+	# O aviso na tela sempre disse "E", entao nada muda para quem joga.
+	"interact": [KEY_E],
 	"cancel": [KEY_ESCAPE],
+	"voar": [KEY_SPACE],
+	"descer": [KEY_CTRL],
 	"chat": [KEY_ENTER, KEY_KP_ENTER],
 	"chat_comando": [KEY_SLASH],
 	"inventory": [KEY_I, KEY_TAB],
