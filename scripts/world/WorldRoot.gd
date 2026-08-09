@@ -135,6 +135,16 @@ func _validate_session() -> bool:
 
 func _build_world() -> void:
 	MapBuilder.build_environment(self, map_data)
+
+	# Cenário pronto num `.glb`: o chão, o terreno e os espalhados seriam
+	# desenhados por cima dele. Os bloqueadores continuam, porque são as paredes
+	# invisíveis declaradas no JSON e servem para fechar o que o modelo deixou
+	# aberto.
+	if MapBuilder.tem_modelo(map_data):
+		MapBuilder.build_modelo(self, map_data)
+		MapBuilder.build_blockers(self, map_data)
+		return
+
 	MapBuilder.build_ground(self, map_data)
 	MapBuilder.build_terrain(self, map_data)
 	MapBuilder.build_blockers(self, map_data)

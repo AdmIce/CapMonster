@@ -14,6 +14,76 @@ const PROP_MIN_DISTANCE_TO_INTERACTABLE := 3.0
 const SCATTER_MAX_ATTEMPTS_PER_ITEM := 12
 
 
+## Um mapa pode ser um cenário inteiro vindo de um `.glb`, em vez de geometria
+## montada peça por peça. Quando é o caso, chão, terreno, marcos e espalhados
+## não têm o que fazer — sairiam por cima do modelo.
+static func tem_modelo(map_data: Dictionary) -> bool:
+	return not (map_data.get("modelo", {}) as Dictionary).is_empty()
+
+
+## Coloca o cenário do `.glb` e dá colisão a ele.
+##
+##   "modelo": { "arquivo": "res://...glb", "escala": 1.0, "pos": [0,0,0], "yaw": 0 }
+static func build_modelo(parent: Node3D, map_data: Dictionary) -> void:
+	var config: Dictionary = map_data.get("modelo", {})
+	if config.is_empty():
+		return
+
+	var caminho := String(config.get("arquivo", ""))
+	if not ResourceLoader.exists(caminho):
+		GameLog.error(GameLog.Channel.WORLD, "Cenário não encontrado: %s" % caminho)
+		return
+
+	var cena: PackedScene = load(caminho)
+	var no: Node3D = cena.instantiate()
+	no.name = "Cenario"
+	no.scale = Vector3.ONE * float(config.get("escala", 1.0))
+	var pos: Array = config.get("pos", [0.0, 0.0, 0.0])
+	if pos.size() == 3:
+		no.position = Vector3(pos[0], pos[1], pos[2])
+	no.rotation_degrees.y = float(config.get("yaw", 0.0))
+	parent.add_child(no)
+
+	if bool(config.get("colisao", true)):
+		_colidir_com_o_cenario(no)
+
+
+## Gera colisão a partir das próprias malhas do cenário.
+##
+## Modelo comprado não vem com corpo de colisão nem com o sufixo `-col` que o
+## importador do Godot entende. Sem isto o quarto seria papel de parede: o
+## jogador atravessaria as paredes e sairia andando no vazio.
+##
+## A lista de malhas é montada **antes** de criar as colisões porque
+## `create_trimesh_collision` pendura um `StaticBody3D` novo em cada malha —
+## caminhar e criar ao mesmo tempo faria a varredura encontrar o que ela mesma
+## acabou de criar.
+static func _colidir_com_o_cenario(raiz: Node3D) -> void:
+	var malhas: Array[MeshInstance3D] = []
+	for no in _descendentes(raiz):
+		if no is MeshInstance3D:
+			malhas.append(no as MeshInstance3D)
+
+	for malha in malhas:
+		malha.create_trimesh_collision()
+
+	# O corpo nasce na camada 1; o jogo separa mundo, jogador e criaturas em
+	# camadas próprias, e sem isto o cenário não pararia ninguém.
+	for no in _descendentes(raiz):
+		if no is StaticBody3D:
+			var corpo := no as StaticBody3D
+			corpo.collision_layer = GameLayers.WORLD
+			corpo.collision_mask = 0
+
+
+static func _descendentes(no: Node) -> Array[Node]:
+	var todos: Array[Node] = []
+	for filho in no.get_children():
+		todos.append(filho)
+		todos.append_array(_descendentes(filho))
+	return todos
+
+
 static func build_ground(parent: Node3D, map_data: Dictionary) -> void:
 	var bounds: Dictionary = map_data.get("bounds", {})
 	var width: float = float(bounds.get("max_x", 10)) - float(bounds.get("min_x", -10))

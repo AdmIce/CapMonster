@@ -21,3 +21,9 @@ Thumbs.db
 # Ferramentas Python
 __pycache__/
 *.pyc
+
+# Modelos crus (.blend, pacotes baixados). O que o jogo usa e o .glb
+# convertido em assets/models/ -- estes ficam de fora para o repositorio nao
+# carregar arquivo que o Godot nem abre.
+/fogueira/
+/mapas/
