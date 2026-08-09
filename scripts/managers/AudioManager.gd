@@ -25,6 +25,13 @@ const BIBLIOTECA := {
 	&"nivel": ["rotate.ogg"],
 	&"vitoria": ["toggle.ogg"],
 	&"cura": ["placement-a.ogg"],
+	# Passos e pulo ainda não têm áudio próprio: são os effects de city builder
+	# reaproveitados (mesmo padrão placeholder do resto). Quem substituir edita
+	# aqui e coloca os arquivos em assets/audio/.
+	&"passo": ["placement-a.ogg", "placement-b.ogg", "placement-c.ogg"],
+	&"passo_cor": ["placement-b.ogg", "placement-c.ogg", "placement-d.ogg"],
+	&"salto": ["rotate.ogg", "toggle.ogg"],
+	&"pouso": ["removal-a.ogg", "removal-b.ogg"],
 }
 
 ## Ajustes por som, já que a origem é toda de um kit de city builder.
@@ -37,6 +44,11 @@ const AJUSTES := {
 	&"nivel": { "tom": 1.5, "volume": -2.0 },
 	&"vitoria": { "tom": 1.15, "volume": 0.0 },
 	&"cura": { "tom": 1.4, "volume": -8.0 },
+	# Passos ficam baixos e graves; corrida um pouco mais alto e rápido.
+	&"passo": { "tom": 0.5, "volume": -16.0 },
+	&"passo_cor": { "tom": 0.65, "volume": -13.0 },
+	&"salto": { "tom": 0.95, "volume": -10.0 },
+	&"pouso": { "tom": 0.7, "volume": -15.0 },
 }
 
 const AMBIENTE := "ambience.ogg"

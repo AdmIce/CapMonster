@@ -14,7 +14,11 @@ const DEFAULT_BINDINGS := {
 	# Enter saiu de "interact" quando o chat entrou: é a tecla de abrir a caixa de
 	# conversa em todo jogo online, e deixar as duas coisas na mesma tecla fazia
 	# mandar mensagem interagir com o NPC atrás de você.
-	"interact": [KEY_E, KEY_SPACE],
+	#
+	# O mesmo raciocínio tirou o Espaço de "interact": agora ele pula, e interagir
+	# ficou só no E. Dividir evitava pular enquanto tentava abrir uma porta.
+	"interact": [KEY_E],
+	"jump": [KEY_SPACE],
 	"cancel": [KEY_ESCAPE],
 	"chat": [KEY_ENTER, KEY_KP_ENTER],
 	"chat_comando": [KEY_SLASH],

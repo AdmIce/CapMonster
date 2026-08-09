@@ -14,6 +14,15 @@ const RUN_SPEED := 8.2
 const ACCELERATION := 42.0
 const FRICTION := 38.0
 const TURN_SPEED := 14.0
+## Pulo: velocidade inicial e a "gravidade" só dele. O mundo não tem gravidade
+## (levitar escala da física), então a parábola é calculada aqui. Medido a
+## 6.5 de subida / 22 de queda dá ~0,9 m de altura e ~0,6 s de ar.
+const JUMP_SPEED := 6.5
+const JUMP_GRAVITY := 22.0
+## Metros percorridos entre um passo e outro, por ritmo. Com o jaleco andando em
+## 5.4 m/s, 1.6 m dá ~3,4 passos/s; correndo a 8.6 m/s, 2.0 m dá ~4,3 passos/s.
+const STEP_WALK := 1.6
+const STEP_RUN := 2.0
 ## How far the player can drift before the position is worth re-recording.
 const POSITION_REPORT_DISTANCE := 1.5
 
@@ -34,6 +43,8 @@ var _current_target: Interactable = null
 var _last_reported := Vector2(INF, INF)
 var _last_plane := Vector2.ZERO
 var _facing_angle: float = 0.0
+var _jumping := false
+var _step_distance := 0.0
 
 
 func _ready() -> void:
@@ -106,6 +117,10 @@ func teleport_to(plane: Vector2) -> void:
 	velocity = Vector3.ZERO
 	_last_reported = plane
 	_last_plane = plane
+	# Teleporte cancela pulo e passo em andamento: chega no chão, e não toca
+	# passo logo depois por causa da distância do salto.
+	_jumping = false
+	_step_distance = 0.0
 
 
 # --- loop ---------------------------------------------------------------------
@@ -137,18 +152,58 @@ func _physics_process(delta: float) -> void:
 	var target_speed := RUN_SPEED if running else WALK_SPEED
 	var desired := direcao * target_speed
 
-	if desired.length_squared() > 0.001:
-		velocity = velocity.move_toward(desired, ACCELERATION * delta)
-	else:
-		velocity = velocity.move_toward(Vector3.ZERO, FRICTION * delta)
-	velocity.y = 0.0
+	# O pulo nasce no chão, com input livre e fora do modo automático. Não muda
+	# a velocidade horizontal: você segue empurrando no ar como andaria.
+	if input_enabled and not auto_enabled and Input.is_action_just_pressed("jump") \
+			and not _jumping and _on_ground():
+		_jumping = true
+		velocity.y = JUMP_SPEED
+		AudioManager.tocar(&"salto")
 
-	move_and_slide()
-	global_position.y = 0.0
+	if desired.length_squared() > 0.001:
+		velocity.x = move_toward(velocity.x, desired.x, ACCELERATION * delta)
+		velocity.z = move_toward(velocity.z, desired.z, ACCELERATION * delta)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, FRICTION * delta)
+		velocity.z = move_toward(velocity.z, 0.0, FRICTION * delta)
+
+	if _jumping:
+		velocity.y -= JUMP_GRAVITY * delta
+		move_and_slide()
+		# O chão é a colisão no y=0; encostou, aterrissa e entrega o controle do
+		# eixo vertical de volta (importante: o modo levitar não prende o piso).
+		if global_position.y <= 0.001:
+			global_position.y = 0.0
+			velocity.y = 0.0
+			_jumping = false
+			AudioManager.tocar(&"pouso")
+	else:
+		velocity.y = 0.0
+		move_and_slide()
+		global_position.y = 0.0
 
 	_update_facing(delta)
 	_update_avatar(running)
+	_update_steps(running, delta)
 	_report_position()
+
+
+func _on_ground() -> bool:
+	return global_position.y <= 0.001
+
+
+func _update_steps(running: bool, delta: float) -> void:
+	if _jumping:
+		return
+	var planar := Vector2(velocity.x, velocity.z)
+	var andou := planar.length() * delta
+	if andou < 0.001:
+		return
+	_step_distance += andou
+	if _step_distance < (STEP_RUN if running else STEP_WALK):
+		return
+	_step_distance = 0.0
+	AudioManager.tocar(&"passo_cor" if running else &"passo")
 
 
 func _update_facing(delta: float) -> void:
