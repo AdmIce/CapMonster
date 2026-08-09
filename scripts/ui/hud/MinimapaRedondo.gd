@@ -1,10 +1,10 @@
 class_name MinimapaRedondo
 extends Control
-## O minimapa do canto, redondo, com aro dourado e rosa dos ventos.
+## O minimapa do canto, redondo, com aro de metal e rosa dos ventos.
 ##
 ## Reaproveita o `MapView` inteiro — o desenho do mapa continua saindo do
 ## `maps.json`, nada é pintado à mão aqui. Esta classe só resolve a moldura:
-## recorta o mapa num círculo e desenha o aro por cima.
+## recorta o mapa num círculo e põe o aro por cima.
 ##
 ## **Como o recorte circular funciona.** `clip_children` recorta os filhos pela
 ## forma que o próprio nó desenhou — então a máscara é um Control que desenha um
@@ -12,19 +12,25 @@ extends Control
 ## círculo sem shader nem SubViewport; `clip_contents` só sabe recortar em
 ## retângulo.
 ##
+## **O aro é uma imagem, não `draw_arc`.** Arco desenhado é faixa de cor chapada,
+## sem volume e serrilhada. O PNG é gerado por `tools/gerar_aro_minimapa.py`, com
+## bisel calculado por pixel e luz vindo de cima à esquerda. Nenhum pacote CC0
+## que eu achei traz moldura redonda — os do Kenney são todos retangulares, e
+## 9-slice não faz círculo.
+##
 ## O norte é fixo em cima porque o mapa vem do JSON com a linha 0 no norte. Em
 ## terceira pessoa a câmera gira, mas o mapa não: mapa que gira junto com a
 ## câmera é mais difícil de ler e esconde para que lado fica o objetivo.
 
 const DIAMETRO := 190.0
-## Grosso o bastante para as letras dos pontos cardeais caberem **dentro** dele.
-## Desenhadas do lado de fora, elas saíam da área do controle e a do leste era
-## cortada pela borda da tela.
-const ESPESSURA_ARO := 13.0
 const ALTURA_TITULO := 26.0
+const ARO := "res://assets/ui/aro_minimapa.png"
 
-const COR_ARO_EXTERNO := Color("#6B4A1E")
-const COR_ARO := Color("#C9922F")
+## Geometria do PNG, em fração do lado dele (512). Mudar o gerador exige mudar
+## estes dois números junto, senão o mapa vaza por baixo do aro.
+const FRACAO_RAIO_INTERNO := 212.0 / 512.0
+const FRACAO_RAIO_DA_FAIXA := 231.0 / 512.0
+
 const COR_ARO_BRILHO := Color("#F2C75C")
 ## Tinta das letras dos pontos cardeais: escura, porque elas ficam sobre o ouro.
 const COR_LETRA := Color("#3B2410")
@@ -75,6 +81,31 @@ func _ready() -> void:
 	mapa.preencher = true
 	_mascara.add_child(mapa)
 
+	# O aro entra depois da máscara, então fica por cima do mapa e esconde a
+	# borda serrilhada do recorte.
+	if ResourceLoader.exists(ARO):
+		var aro := TextureRect.new()
+		aro.name = "Aro"
+		aro.texture = load(ARO)
+		aro.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		aro.stretch_mode = TextureRect.STRETCH_SCALE
+		aro.position = Vector2(0, ALTURA_TITULO)
+		aro.size = Vector2(DIAMETRO, DIAMETRO)
+		aro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(aro)
+	else:
+		GameLog.warn(GameLog.Channel.UI, "Aro do minimapa ausente; rode tools/gerar_aro_minimapa.py.")
+
+	# As letras vão num nó **depois** do aro. O `_draw` de um Control roda antes
+	# dos filhos dele, então desenhá-las aqui na raiz punha N, L, S e O por baixo
+	# do PNG do aro — elas existiam e ninguém via.
+	var letras := Control.new()
+	letras.name = "Cardeais"
+	letras.set_anchors_preset(Control.PRESET_FULL_RECT)
+	letras.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	letras.draw.connect(_desenhar_cardeais.bind(letras))
+	add_child(letras)
+
 
 func configurar(dados: Dictionary, jogador: Node3D) -> void:
 	if mapa != null:
@@ -86,20 +117,18 @@ func configurar(dados: Dictionary, jogador: Node3D) -> void:
 
 ## Círculo cheio: é ele que define o recorte dos filhos. A cor não aparece
 ## (CLIP_CHILDREN_ONLY desenha só os filhos), mas o alfa precisa ser 1.
+##
+## O raio acompanha a borda interna do aro com uma folga de 1 px, para o mapa
+## passar por baixo do metal em vez de deixar uma fresta.
 func _desenhar_mascara() -> void:
-	var raio := DIAMETRO * 0.5
-	_mascara.draw_circle(Vector2(raio, raio), raio - ESPESSURA_ARO * 0.5, COR_FUNDO)
+	var meio := DIAMETRO * 0.5
+	_mascara.draw_circle(Vector2(meio, meio), DIAMETRO * FRACAO_RAIO_INTERNO + 1.0, COR_FUNDO)
 
 
-func _draw() -> void:
+## Só as letras: o metal vem do PNG.
+func _desenhar_cardeais(onde: Control) -> void:
 	var centro := Vector2(DIAMETRO * 0.5, ALTURA_TITULO + DIAMETRO * 0.5)
-	var raio := DIAMETRO * 0.5 - ESPESSURA_ARO * 0.5
-
-	# Três arcos concêntricos dão volume ao aro sem precisar de textura: sombra
-	# por fora, ouro no meio, brilho por dentro.
-	draw_arc(centro, raio + 1.5, 0.0, TAU, 64, COR_ARO_EXTERNO, ESPESSURA_ARO + 3.0, true)
-	draw_arc(centro, raio, 0.0, TAU, 64, COR_ARO, ESPESSURA_ARO, true)
-	draw_arc(centro, raio - ESPESSURA_ARO * 0.45, 0.0, TAU, 64, COR_ARO_BRILHO, 1.5, true)
+	var raio := DIAMETRO * FRACAO_RAIO_DA_FAIXA
 
 	var fonte := Design.ui_font()
 	if fonte == null:
@@ -117,5 +146,7 @@ func _draw() -> void:
 		# Tinta escura sobre o ouro: letra clara com contorno some no próprio aro,
 		# que já é claro. O norte ganha um halo para se distinguir dos outros três.
 		if letra == "N":
-			draw_string_outline(fonte, pos, letra, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho, 4, COR_ARO_BRILHO)
-		draw_string(fonte, pos, letra, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho, COR_LETRA)
+			onde.draw_string_outline(
+				fonte, pos, letra, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho, 4, COR_ARO_BRILHO
+			)
+		onde.draw_string(fonte, pos, letra, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho, COR_LETRA)
