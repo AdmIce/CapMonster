@@ -18,18 +18,20 @@
       "subtitle": "Onde tudo comeca",
       "modelo": {
         "arquivo": "res://assets/models/maps/quarto_otaku.glb",
-        "escala": 12.0,
+        "escala": 5.0,
         "pos": [0, 0, 0],
         "yaw": 0,
         "_esconder": "A esfera de HDRI que o autor usou para iluminar a cena envolve o quarto inteiro e vira um teto preto.",
         "esconder": ["hdri", "Sphere"],
         "_esconder_acima": "Tira o telhado: some com o que esta inteiramente acima de 2,4 m, para a camera enxergar dentro do quarto. Parede inteira continua, porque comeca no chao.",
-        "esconder_acima": 21.0
+        "esconder_acima": 12.0
       },
-      "bounds": { "min_x": -18, "max_x": 18, "min_z": -18, "max_z": 18 },
+      "bounds": { "min_x": -8, "max_x": 8, "min_z": -8, "max_z": 8 },
       "_camera": "Quanto a camera de cima abrange, em metros de altura de tela. O quarto tem uns 36 m de lado na escala 12, e enquadrar 7 mantem o personagem do mesmo tamanho de sempre: o quarto passou a ser espaco para andar, nao um diorama que cabe na tela.",
-      "camera": { "tamanho": 7.0 },
+      "camera": { "tamanho": 8.5 },
       "ambient": {
+        "_fundo": "Quarto e lugar fechado: o que aparece alem das paredes tem de ser escuridao, nao paisagem. O ceu continua existindo so como fonte de luz.",
+        "fundo": "#0A0B0F",
         "sky_top": "#1E2230",
         "sky_horizon": "#3A3348",
         "ambient_energy": 0.55,

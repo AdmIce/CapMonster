@@ -468,6 +468,17 @@ static func build_environment(parent: Node3D, map_data: Dictionary) -> void:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
+
+	# Mapa fechado (`"fundo"` no ambient): fora das paredes vira escuridão, e não
+	# campo verde com céu por cima. Num interior, enxergar o mundo pelas frestas
+	# denuncia que o quarto é uma casquinha solta no meio do nada.
+	#
+	# Só o **fundo** muda: o céu continua existindo como fonte de luz ambiente,
+	# senão o quarto perderia a iluminação junto com a paisagem.
+	var fundo := String(ambient.get("fundo", ""))
+	if fundo != "":
+		environment.background_mode = Environment.BG_COLOR
+		environment.background_color = _color(fundo)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.ambient_light_energy = float(ambient.get("ambient_energy", 0.55))
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC

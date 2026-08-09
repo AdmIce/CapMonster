@@ -326,7 +326,23 @@ func _montar_cabelo(modelo: Node3D, prefixo: String) -> void:
 const OSSOS_DAS_COSTAS := ["chest", "spine", "Spine", "spine_02", "mixamorig:Spine1", "Bip01_Spine1"]
 
 
+## Asas desligadas por decisão do dono do jogo: "não vamos usar por enquanto".
+##
+## Um interruptor em vez de apagar o código: o `Asas.gd` continua inteiro e
+## testado, e voltar atrás é trocar este `false`. Apagar custaria refazer a
+## batida das penas, o encaixe no osso das costas e a briga com a capa.
+##
+## O voo (dois toques no espaço) continua funcionando -- é outra coisa, e não
+## foi ela que ele mandou tirar.
+const USAR_ASAS := false
+
+
 func _montar_asas(modelo: Node3D) -> void:
+	if not USAR_ASAS:
+		# Sem asas, a capa volta: ela só tinha sido escondida porque as duas
+		# disputavam o mesmo lugar nas costas.
+		return
+
 	# A capa ocupa exatamente o espaço das asas: com as duas, uma atravessa a
 	# outra a cada passo. O lugar nas costas é um só, e agora é das asas.
 	for no in _todos(modelo):
