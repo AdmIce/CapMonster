@@ -89,25 +89,33 @@ const ANIM_MODULAR := {
 	"montado": "Driving",
 }
 
-## Cabelos. O primeiro e "nenhum" de proposito: careca tem de ser uma escolha.
+## Cabelos, e a ordem importa: o indice 0 e o que sai quando ninguem escolhe.
+##
+## Eu tinha posto "nenhum" primeiro, achando que careca devia ser uma escolha --
+## e o efeito foi o contrario: todo personagem criado sem passar por esta linha
+## nascia careca. Careca continua existindo, no fim, onde e escolha de verdade.
 const CABELOS_MODULARES: Array[String] = [
-	"", "Hair_SimpleParted", "Hair_Long", "Hair_Buns", "Hair_Buzzed", "Hair_BuzzedFemale", "Hair_Beard",
+	"Hair_SimpleParted", "Hair_Long", "Hair_Buns", "Hair_Buzzed", "Hair_BuzzedFemale", "Hair_Beard", "",
 ]
 
-## Roupas, por corpo. Os nomes de arquivo nao sao simetricos entre os dois
+## Roupas, por corpo. A ordem segue a mesma regra do cabelo: o indice 0 e o
+## padrao de quem nao escolhe, entao "sem roupa" fica no fim. Com ele na frente,
+## todo personagem novo nascia pelado.
+##
+## Os nomes de arquivo nao sao simetricos entre os dois
 ## (o masculino tem `Feet_Boots` e `Acc_Pauldron`, o feminino tem `Feet` e
 ## `Acc_Pauldrons`), entao a lista e declarada inteira em vez de montada por
 ## template -- template exigiria adivinhar, e adivinhar erra em silencio.
 const ROUPAS_MODULARES := {
 	"masculino": [
-		{ "nome": "Sem roupa", "pecas": [] },
 		{ "nome": "Camponês", "pecas": ["Male_Peasant_Body", "Male_Peasant_Arms", "Male_Peasant_Legs", "Male_Peasant_Feet"] },
 		{ "nome": "Patrulheiro", "pecas": ["Male_Ranger_Body", "Male_Ranger_Arms", "Male_Ranger_Legs", "Male_Ranger_Feet_Boots", "Male_Ranger_Acc_Pauldron"] },
+		{ "nome": "Sem roupa", "pecas": [] },
 	],
 	"feminino": [
-		{ "nome": "Sem roupa", "pecas": [] },
 		{ "nome": "Camponesa", "pecas": ["Female_Peasant_Body", "Female_Peasant_Arms", "Female_Peasant_Legs", "Female_Peasant_Feet"] },
 		{ "nome": "Patrulheira", "pecas": ["Female_Ranger_Body", "Female_Ranger_Arms", "Female_Ranger_Legs", "Female_Ranger_Feet", "Female_Ranger_Acc_Pauldrons"] },
+		{ "nome": "Sem roupa", "pecas": [] },
 	],
 }
 
@@ -172,7 +180,7 @@ const HAIR_LABELS: Array[String] = ["Curto", "Preso", "Comprido"]
 
 ## Nomes dos cabelos do kit modular, na ordem de CABELOS_MODULARES.
 const CABELOS_MODULARES_NOMES: Array[String] = [
-	"Careca", "Repartido", "Comprido", "Coques", "Raspado", "Curtinho", "Barba",
+	"Repartido", "Comprido", "Coques", "Raspado", "Curtinho", "Barba", "Careca",
 ]
 
 
@@ -643,11 +651,52 @@ func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
 		for peca in pecas:
 			_pendurar_peca(esqueleto, "roupas/" + String(peca))
 		if not pecas.is_empty():
+			# A ordem importa: primeiro a pele que falta nas pecas, depois o
+			# encolhimento -- senao o encolhimento seria copiado junto e o
+			# antebraco tambem afundaria.
+			_emprestar_a_pele(esqueleto)
 			_encolher_o_corpo(esqueleto)
 
 	var cabelo := CABELOS_MODULARES[_index("hair", CABELOS_MODULARES.size())]
 	if cabelo != "":
 		_pendurar_peca(esqueleto, "cabelos/" + cabelo)
+
+
+## Da a textura de pele do corpo as superficies de roupa que vieram sem nenhuma.
+##
+## As pecas do pacote misturam pano e pele na mesma malha: a manga do
+## Patrulheiro e uma superficie, o antebraco de fora e outra. A do pano vem com
+## a textura da roupa; a da pele vem **sem textura**, branca, porque o autor
+## esperava que ela usasse a textura do corpo -- e essa ligacao nao atravessa o
+## `.gltf`.
+##
+## Era o que aparecia como "a roupa em algumas partes sem textura". Medido: em
+## `Male_Ranger_Arms`, a superficie 1 chega com albedo branco e nada mais.
+func _emprestar_a_pele(esqueleto: Skeleton3D) -> void:
+	var pele := _material_da_pele(esqueleto)
+	if pele == null:
+		return
+
+	for no in esqueleto.get_children():
+		if not (no is MeshInstance3D):
+			continue
+		var malha := no as MeshInstance3D
+		if malha.mesh == null or String(malha.name).begins_with("SuperHero"):
+			continue
+		for i in malha.mesh.get_surface_count():
+			var material := malha.get_active_material(i)
+			if material is StandardMaterial3D and (material as StandardMaterial3D).albedo_texture != null:
+				continue
+			malha.set_surface_override_material(i, pele)
+
+
+func _material_da_pele(esqueleto: Skeleton3D) -> StandardMaterial3D:
+	for no in esqueleto.get_children():
+		if no is MeshInstance3D and String(no.name).begins_with("SuperHero"):
+			var material := (no as MeshInstance3D).get_active_material(0)
+			if material is StandardMaterial3D:
+				return (material as StandardMaterial3D).duplicate() as StandardMaterial3D
+	return null
 
 
 ## Encolhe a pele por dentro da roupa.
@@ -707,10 +756,16 @@ func _pendurar_peca(esqueleto: Skeleton3D, relativo: String) -> void:
 		malha.skeleton = NodePath("..")
 
 	if OS.is_debug_build():
-		var nomes: Array[String] = []
 		for m in malhas:
-			nomes.append("%s(%d sup)" % [m.name, m.mesh.get_surface_count() if m.mesh != null else 0])
-		GameLog.verbose(GameLog.Channel.SYSTEM, "  peca %-28s -> %s" % [relativo, ", ".join(nomes)])
+			if m.mesh == null:
+				continue
+			for i in m.mesh.get_surface_count():
+				var mat := m.get_active_material(i)
+				var textura := "SEM MATERIAL"
+				if mat is StandardMaterial3D:
+					var t: Texture2D = (mat as StandardMaterial3D).albedo_texture
+					textura = t.resource_path.get_file() if t != null else "SEM TEXTURA (cor %s)" % (mat as StandardMaterial3D).albedo_color
+				GameLog.verbose(GameLog.Channel.SYSTEM, "  %s sup%d -> %s" % [m.name, i, textura])
 
 	cena.queue_free()
 
