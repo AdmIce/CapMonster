@@ -13,6 +13,8 @@ var camera_rig: CameraRig = null
 ## O aviso do Alt sai uma vez por mapa, na primeira vez que uma câmera de mouse
 ## entra. Repetir a cada troca vira ruído.
 var _avisou_do_cursor: bool = false
+## Mapa que nao deixa trocar de camera. Ver `camera.travada` no maps.json.
+var _camera_travada: bool = false
 var spawner: SpawnManager = null
 var autopilot: AutoPilot = null
 var companion: CompanionCreature = null
@@ -68,7 +70,34 @@ func _ready() -> void:
 	# O chat abre vazio na primeira partida e ninguém descobre que ele existe.
 	Chat.sistema("Você chegou em %s. Enter abre o chat — /ajuda lista os comandos." % map_data.get("name", map_id))
 	_mostrar_recompensa_offline()
+	_encenar_abertura()
 	_abrir_painel_de_teste()
+
+
+## Roda a cena do mapa, se houver e se ela ainda nao rodou.
+##
+## Uma vez por personagem: a marca fica na ficha. Ver a abertura de novo a cada
+## vez que se volta ao quarto transformaria a cena em pedagio.
+func _encenar_abertura() -> void:
+	var passos: Array = map_data.get("cena", [])
+	if passos.is_empty():
+		return
+	var marca := "cena_%s_vista" % map_id
+	if bool(GameManager.player.get_flag(marca, false)):
+		return
+	GameManager.player.set_flag(marca, true)
+
+	# A HUD sai: e cinema, e barra de vida no meio de cinema estraga.
+	if hud != null:
+		hud.visible = false
+
+	var cena := Cena.criar(passos)
+	add_child(cena)
+	cena.terminou.connect(func():
+		if hud != null and is_instance_valid(hud):
+			hud.visible = true
+	)
+	cena.encenar(player, camera_rig, dialogue)
 
 
 ## `-- --abrir=loja|mochila|missoes` abre o painel já na entrada, para a
@@ -312,6 +341,21 @@ func _build_camera() -> void:
 	camera_rig.modo_mudou.connect(_ao_mudar_camera)
 	camera_rig.definir_modo(CameraRig.modo_do_id(_modo_de_camera_pedido()))
 
+	# Mapa que manda no enquadramento (a abertura no quarto). Ali a cena foi
+	# montada para ser vista de um jeito so, e deixar o jogador girar mostraria
+	# o lado de fora das paredes.
+	var config_camera: Dictionary = map_data.get("camera", {})
+	if bool(config_camera.get("travada", false)):
+		_camera_travada = true
+
+	# Ajustes de enquadramento pedidos pelo mapa (distancia, altura, pitch, fov).
+	var ajustes: Dictionary = {}
+	for chave in ["distancia", "altura", "pitch", "fov"]:
+		if config_camera.has(chave):
+			ajustes[chave] = float(config_camera[chave])
+	if not ajustes.is_empty():
+		camera_rig.ajustar_para_o_mapa(ajustes)
+
 
 ## Qual enquadramento entra. Normalmente o que ficou salvo; em build de debug,
 ## `-- --camera=primeira_pessoa` manda mais, para a ferramenta de captura poder
@@ -321,6 +365,11 @@ func _modo_de_camera_pedido() -> String:
 		for argumento in OS.get_cmdline_user_args():
 			if argumento.begins_with("--camera="):
 				return argumento.split("=")[1]
+	# O mapa manda mais que a preferencia quando ele trava a camera: a abertura
+	# no quarto so funciona no enquadramento para o qual ela foi montada.
+	var config: Dictionary = map_data.get("camera", {})
+	if bool(config.get("travada", false)):
+		return String(config.get("modo", "terceira_pessoa"))
 	return String(SaveManager.get_setting(CameraRig.CHAVE_MODO, "terceira_pessoa"))
 
 
@@ -339,6 +388,15 @@ func _build_interactables() -> void:
 				GameManager.player.heal_all()
 				Notify.good("%s cuidou da sua equipe." % npc.speaker_name)
 			)
+
+	# Moveis com que da para conversar (a televisao e a cama do quarto inicial).
+	# Sao pedacos do .glb do cenario, sem no de jogo nenhum: o interagivel entra
+	# por cima, invisivel, e o modelo continua sendo so arte.
+	for dados_objeto in map_data.get("objetos", []):
+		var objeto := ObjetoDeCena.criar(dados_objeto)
+		container.add_child(objeto)
+		objeto.dialogo_pedido.connect(_on_dialogue_requested)
+		objeto.acao_pedida.connect(_ao_pedir_acao_de_objeto)
 
 	for heal_data in map_data.get("heal_points", []):
 		container.add_child(HealPoint.create(heal_data))
@@ -470,6 +528,30 @@ func _ao_pedir_loja(config: Dictionary) -> void:
 		return
 	hud.set_prompt("")
 	shop.abrir(config)
+
+
+## Acoes que um movel dispara depois da fala.
+##
+## `dormir` fecha a abertura: espera o dialogo terminar, apaga a tela e leva
+## para a selecao de personagem. Esperar o dialogo importa -- sem isso a troca
+## de cena come a ultima fala no meio.
+func _ao_pedir_acao_de_objeto(acao: String) -> void:
+	match acao:
+		"dormir":
+			_dormir()
+		_:
+			GameLog.warn(GameLog.Channel.WORLD, "Objeto pediu acao desconhecida: '%s'." % acao)
+
+
+func _dormir() -> void:
+	player.input_enabled = false
+	if dialogue.is_open():
+		await dialogue.finished
+
+	GameManager.record_position(player.plane_position())
+	GameManager.save_now("dormiu")
+	GameLog.info(GameLog.Channel.WORLD, "Dormiu; indo para a selecao de personagem.")
+	SceneFlow.goto_character_select()
 
 
 func _on_dialogue_finished() -> void:
@@ -627,6 +709,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			pause_menu.toggle()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("toggle_camera"):
+		if _camera_travada:
+			# Explicar em vez de so ignorar: tecla que nao faz nada e
+			# indistinguivel de tecla quebrada.
+			Notify.show_message("Aqui a câmera é fixa.")
+			get_viewport().set_input_as_handled()
+			return
 		camera_rig.alternar_modo()
 		# Salvar aqui, e não no sinal: a batalha também troca o enquadramento, e
 		# gravar lá apagaria a escolha do jogador a cada luta.

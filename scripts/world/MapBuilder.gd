@@ -61,6 +61,14 @@ static func build_modelo(parent: Node3D, map_data: Dictionary) -> void:
 	if teto > 0.0:
 		_tirar_o_telhado(no, teto)
 
+	if OS.is_debug_build():
+		for descendente in _descendentes(no):
+			if descendente is MeshInstance3D and (descendente as MeshInstance3D).mesh != null:
+				var m := descendente as MeshInstance3D
+				var c := m.global_transform * m.mesh.get_aabb()
+				GameLog.verbose(GameLog.Channel.WORLD, "  peca %-22s %6.1f x %5.1f x %6.1f  visivel=%s" % [
+					m.name, c.size.x, c.size.y, c.size.z, m.visible])
+
 	if bool(config.get("colisao", true)):
 		_colidir_com_o_cenario(no)
 
@@ -476,6 +484,7 @@ static func build_environment(parent: Node3D, map_data: Dictionary) -> void:
 	# Só o **fundo** muda: o céu continua existindo como fonte de luz ambiente,
 	# senão o quarto perderia a iluminação junto com a paisagem.
 	var fundo := String(ambient.get("fundo", ""))
+	GameLog.verbose(GameLog.Channel.WORLD, "Ambiente: fundo='%s' (chaves: %s)" % [fundo, ", ".join(PackedStringArray(ambient.keys()))])
 	if fundo != "":
 		environment.background_mode = Environment.BG_COLOR
 		environment.background_color = _color(fundo)

@@ -156,8 +156,40 @@ func _ready() -> void:
 
 # --- consultas ----------------------------------------------------------------
 
+## Ajustes que o mapa pede por cima do enquadramento escolhido. Existe para
+## interior: a camera de terceira pessoa fica 7,2 m atras, e num quarto de 6,7 m
+## isso a poe **do lado de fora**, olhando por cima da parede.
+var _ajustes_do_mapa: Dictionary = {}
+
+
 func config() -> Dictionary:
-	return MODOS[modo]
+	var base: Dictionary = MODOS[modo]
+	if _ajustes_do_mapa.is_empty():
+		return base
+	var junto := base.duplicate()
+	for chave in _ajustes_do_mapa:
+		junto[chave] = _ajustes_do_mapa[chave]
+	return junto
+
+
+## Vira a camera para uma direcao no plano, com atraso. Usado pelas cenas: em
+## primeira pessoa e a camera que conta a historia, e uma caminhada olhando para
+## o lado errado nao conta nada.
+##
+## Mexe no mesmo `_yaw` que o mouse mexeria, entao a cena e o jogador nunca
+## brigam pelo controle -- durante a cena o teclado e o mouse estao desligados.
+func olhar_para_direcao(direcao: Vector2, velocidade: float = 3.0) -> void:
+	if direcao.length_squared() < 0.0001:
+		return
+	var alvo := atan2(-direcao.x, -direcao.y)
+	_yaw = lerp_angle(_yaw, alvo, clampf(velocidade * get_process_delta_time(), 0.0, 1.0))
+
+
+## `distancia`, `altura`, `pitch` e `fov` -- o que vier e sobrescrito.
+func ajustar_para_o_mapa(ajustes: Dictionary) -> void:
+	_ajustes_do_mapa = ajustes.duplicate()
+	_pitch = float(config()["pitch"])
+	_apply_projection()
 
 
 ## O enquadramento atual precisa do mouse preso? Quem responde à pergunta com

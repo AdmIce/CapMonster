@@ -18,17 +18,22 @@
       "subtitle": "Onde tudo comeca",
       "modelo": {
         "arquivo": "res://assets/models/maps/quarto_otaku.glb",
-        "escala": 5.0,
+        "_escala": "Na escala 1 o quarto tem 3 m de lado - quarto de verdade, mas apertado demais para andar. A 2 ele tem 6 m: mobilia ainda crivel ao lado de um personagem de 1,87 m, e espaco para caminhar.",
+        "escala": 2.5,
         "pos": [0, 0, 0],
         "yaw": 0,
         "_esconder": "A esfera de HDRI que o autor usou para iluminar a cena envolve o quarto inteiro e vira um teto preto.",
         "esconder": ["hdri", "Sphere"],
         "_esconder_acima": "Tira o telhado: some com o que esta inteiramente acima de 2,4 m, para a camera enxergar dentro do quarto. Parede inteira continua, porque comeca no chao.",
-        "esconder_acima": 12.0
+        "esconder_acima": 6.0
       },
-      "bounds": { "min_x": -8, "max_x": 8, "min_z": -8, "max_z": 8 },
-      "_camera": "Quanto a camera de cima abrange, em metros de altura de tela. O quarto tem uns 36 m de lado na escala 12, e enquadrar 7 mantem o personagem do mesmo tamanho de sempre: o quarto passou a ser espaco para andar, nao um diorama que cabe na tela.",
-      "camera": { "tamanho": 8.5 },
+      "bounds": { "min_x": -4, "max_x": 4, "min_z": -4, "max_z": 4 },
+      "_camera": "Quanto a camera de cima abrange, em metros de altura de tela. Encher a tela e trabalho da camera, nao do modelo: aumentar o quarto para caber na tela foi o que deixou a cama com 10 m e a mobilia de gigante ao lado de um personagem de 1,87 m.",
+      "_camera_travada": "A abertura foi montada para ser vista de um enquadramento so. Deixar girar mostraria o lado de fora das paredes, e o C passa a explicar que aqui a camera e fixa.",
+      "camera": {
+        "_modo": "Primeira pessoa a pedido: a abertura e vista pelos olhos dele. Travada porque a cena foi montada para esse enquadramento -- em terceira pessoa a camera fica 7,2 m atras, que num quarto de 7 m e do lado de fora, olhando por cima da parede.",
+        "modo": "primeira_pessoa", "travada": true
+      },
       "ambient": {
         "_fundo": "Quarto e lugar fechado: o que aparece alem das paredes tem de ser escuridao, nao paisagem. O ceu continua existindo so como fonte de luz.",
         "fundo": "#0A0B0F",
@@ -37,7 +42,75 @@
         "ambient_energy": 0.55,
         "sun_energy": 0.5
       },
-      "spawn_points": { "start": [0, 0] }
+      "spawn_points": { "start": [1.2, 1.6] },
+      "_cena": [
+        "A abertura, encenada: o jogador nao controla nada aqui.",
+        "Ele acorda na cama, vai ate a televisao, tenta desligar, desiste e volta a dormir.",
+        "Roda uma vez por personagem (marca `cena_quarto_vista` na ficha).",
+        "Mudar fala, caminho ou ordem e edicao deste bloco -- o Cena.gd so sabe executar os tipos."
+      ],
+      "cena": [
+        { "tipo": "esperar", "segundos": 1.2 },
+        { "tipo": "falar", "quem": "", "linhas": ["Você acorda com a televisão ligada. De novo."] },
+        { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 1.0 },
+        { "tipo": "andar", "para": [-0.6, -0.2] },
+        { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 0.6 },
+        { "tipo": "falar", "quem": "Televisão", "linhas": [
+            "SO, WHAT DO YOU FEEL?",
+            "A pergunta fica piscando. Não é para você — é o que estava passando quando você dormiu."
+          ] },
+        { "tipo": "esperar", "segundos": 0.6 },
+        { "tipo": "falar", "quem": "", "linhas": [
+            "Você estica o braço para desligar.",
+            "O botão afunda e volta. A tela continua verde.",
+            "Tenta de novo. Nada.",
+            "Tudo bem. Amanhã você resolve isso. Volta pra cama."
+          ] },
+        { "tipo": "olhar", "para": [1.4, 1.8], "segundos": 1.0 },
+        { "tipo": "andar", "para": [1.2, 1.6] },
+        { "tipo": "falar", "quem": "", "linhas": [
+            "Você se deita sem tirar a roupa.",
+            "O sono chega antes de você decidir o que fazer com a televisão."
+          ] },
+        { "tipo": "esperar", "segundos": 1.0 },
+        { "tipo": "ir", "cena": "character_select" }
+      ],
+      "_objetos": [
+        "A abertura. A televisao manda para a cama e a cama termina o prologo.",
+        "A ordem e garantida por marca: a cama exige `falou_com_a_tv`, que a televisao grava.",
+        "Sem isso o jogador deitaria no primeiro segundo e pularia a abertura sem saber que existia."
+      ],
+      "objetos": [
+        {
+          "id": "tv",
+          "name": "Televisão",
+          "verb": "Assistir",
+          "pos": [-1.6, -0.6],
+          "altura": 0.6,
+          "raio": 2.0,
+          "marca": "falou_com_a_tv",
+          "lines": [
+            "A tela pisca uma pergunta em verde: SO, WHAT DO YOU FEEL?",
+            "Você não responde. A televisão não estava perguntando para você.",
+            "Está tarde. Amanhã começa cedo — vá dormir."
+          ]
+        },
+        {
+          "id": "cama",
+          "name": "Cama",
+          "verb": "Deitar na",
+          "pos": [1.2, 1.6],
+          "altura": 0.3,
+          "raio": 2.2,
+          "exige_marca": "falou_com_a_tv",
+          "recado_bloqueado": "Ainda não. Tem alguma coisa passando na televisão.",
+          "acao": "dormir",
+          "lines": [
+            "Você se deita sem tirar a roupa. O teto tem uma mancha que parece um bicho.",
+            "O sono chega antes de você decidir o que ela é."
+          ]
+        }
+      ]
     },
     {
       "id": "vila_juncal",
