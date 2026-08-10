@@ -653,6 +653,8 @@ func _atualizar_mouse() -> void:
 	var desejado := Input.MOUSE_MODE_CAPTURED if precisa else Input.MOUSE_MODE_VISIBLE
 	if Input.mouse_mode != desejado:
 		Input.mouse_mode = desejado
+		GameLog.verbose(GameLog.Channel.SYSTEM,
+			"Cursor: %s." % ("preso" if precisa else "solto"))
 
 
 ## Cada painel é testado contra `null` porque `_process` já está rodando
@@ -671,7 +673,20 @@ func _interface_na_frente() -> bool:
 		return true
 	if map_panel != null and map_panel.visible:
 		return true
-	return hud != null and hud.chat_aberto()
+	if hud != null and hud.chat_aberto():
+		return true
+
+	# Qualquer tela pendurada no mundo tambem conta -- o guarda-roupa, o "bem
+	# vindo de volta", e o que vier depois.
+	#
+	# Esta parte existe porque a lista acima e uma lista, e lista esquece: o
+	# guarda-roupa abria com o cursor preso nas cameras de mouse, e nao havia
+	# como clicar em nada. Enumerar painel por painel resolve o de hoje e deixa
+	# o de amanha quebrado do mesmo jeito.
+	for filho in get_children():
+		if filho is Control and (filho as Control).visible:
+			return true
+	return false
 
 
 func _process(_delta: float) -> void:
