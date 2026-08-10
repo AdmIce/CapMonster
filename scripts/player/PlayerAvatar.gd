@@ -688,6 +688,8 @@ func _emprestar_a_pele(esqueleto: Skeleton3D) -> void:
 			if material is StandardMaterial3D and (material as StandardMaterial3D).albedo_texture != null:
 				continue
 			malha.set_surface_override_material(i, pele)
+			if OS.is_debug_build():
+				GameLog.verbose(GameLog.Channel.SYSTEM, "  pele emprestada -> %s sup%d" % [malha.name, i])
 
 
 func _material_da_pele(esqueleto: Skeleton3D) -> StandardMaterial3D:
