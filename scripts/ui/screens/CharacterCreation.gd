@@ -161,7 +161,10 @@ func _build_options() -> Control:
 	_aviso_kit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_aviso_kit)
 
-	column.add_child(_option_row("CABELO", "hair", PlayerAvatar.HAIR_LABELS))
+	# Nasce com o maior conjunto que existe entre os kits; `_ajustar_ao_kit`
+	# renomeia e esconde o que sobra. Construir com o menor deixaria os cabelos
+	# do kit modular sem botao -- foi exatamente o que escondeu metade deles.
+	column.add_child(_option_row("CABELO", "hair", PlayerAvatar.CABELOS_MODULARES_NOMES))
 	column.add_child(_color_row("COR DO CABELO", "hair_color", PlayerAvatar.HAIR_COLORS))
 	column.add_child(_color_row("TOM DE PELE", "skin", PlayerAvatar.SKIN_TONES))
 
@@ -193,9 +196,32 @@ func _ajustar_ao_kit() -> void:
 	if _outfit_label != null:
 		_outfit_label.visible = personalizavel
 
+	if personalizavel:
+		_renomear_opcoes("hair", PlayerAvatar.rotulos_de_cabelo(indice))
+		_renomear_opcoes("outfit", PlayerAvatar.rotulos_de_roupa(indice))
+
 	_aviso_kit.visible = not personalizavel
 	if not personalizavel:
 		_aviso_kit.text = "Este personagem vem com visual proprio — cabelo, pele e roupa nao se aplicam a ele." 
+
+
+## Renomeia os botoes de uma linha e esconde os que sobram.
+##
+## Cada kit tem um numero diferente de cabelos e de roupas, e o painel e
+## construido uma vez so. Sem isto, trocar de personagem deixava o rotulo do kit
+## anterior -- ou pior, um botao que escolhe um cabelo que aquele corpo nao tem.
+func _renomear_opcoes(chave: String, rotulos: Array) -> void:
+	var botoes: Array = _option_rows.get(chave, [])
+	for i in botoes.size():
+		var botao: Button = botoes[i]
+		botao.visible = i < rotulos.size()
+		if botao.visible:
+			botao.text = String(rotulos[i])
+
+	# A escolha atual pode nao existir no kit novo (cabelo 5 num kit de 3).
+	if int(_appearance.get(chave, 0)) >= rotulos.size():
+		_appearance[chave] = 0
+	_refresh_row(chave)
 
 
 func _option_row(caption: String, key: String, labels: Array) -> Control:

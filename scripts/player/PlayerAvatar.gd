@@ -169,6 +169,39 @@ const SKIN_TONES: Array[Color] = [Color("#F0D2B4"), Color("#C08E62"), Color("#8A
 const HAIR_COLORS: Array[Color] = [Color("#2B2320"), Color("#8A5A2B"), Color("#C7B49A")]
 const HAIR_STYLES: Array[String] = ["cropped", "tied", "long"]
 const HAIR_LABELS: Array[String] = ["Curto", "Preso", "Comprido"]
+
+## Nomes dos cabelos do kit modular, na ordem de CABELOS_MODULARES.
+const CABELOS_MODULARES_NOMES: Array[String] = [
+	"Careca", "Repartido", "Comprido", "Coques", "Raspado", "Curtinho", "Barba",
+]
+
+
+## Os cabelos que este personagem tem, por indice de corpo.
+##
+## Cada kit tem os seus: o KayKit troca tres penteados desenhados a mao, o
+## modular troca a malha inteira e tem seis. Uma lista fixa para os dois
+## significava mostrar tres opcoes num personagem que tem seis -- foi o que
+## escondeu metade dos cabelos novos.
+static func rotulos_de_cabelo(indice_do_corpo: int) -> Array[String]:
+	var escolha: Dictionary = PERSONAGENS[clampi(indice_do_corpo, 0, PERSONAGENS.size() - 1)]
+	if String(escolha.get("kit", KIT_KAYKIT)) == KIT_MODULAR:
+		return CABELOS_MODULARES_NOMES
+	return HAIR_LABELS
+
+
+## Idem para a roupa. No modular ela depende do corpo, porque a malha e cortada
+## para ele: a roupa masculina nao serve no corpo feminino.
+static func rotulos_de_roupa(indice_do_corpo: int) -> Array[String]:
+	var escolha: Dictionary = PERSONAGENS[clampi(indice_do_corpo, 0, PERSONAGENS.size() - 1)]
+	if String(escolha.get("kit", KIT_KAYKIT)) == KIT_MODULAR:
+		var nomes: Array[String] = []
+		for conjunto in ROUPAS_MODULARES.get(String(escolha.get("sexo", "masculino")), []):
+			nomes.append(String(conjunto.get("nome", "?")))
+		return nomes
+	var padrao: Array[String] = []
+	for outfit in OUTFITS:
+		padrao.append(String(outfit["name"]))
+	return padrao
 const OUTFITS: Array[Dictionary] = [
 	{ "name": "Casaco de Campo", "main": Color("#9FC4DC"), "trim": Color("#C9922F"), "legs": Color("#8FA6BC") },
 	{ "name": "Traje de Batedor", "main": Color("#AFC79B"), "trim": Color("#D9C98A"), "legs": Color("#93A882") },
@@ -606,12 +639,48 @@ func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
 	var conjuntos: Array = ROUPAS_MODULARES.get(sexo, [])
 	if not conjuntos.is_empty():
 		var conjunto: Dictionary = conjuntos[_index("outfit", conjuntos.size())]
-		for peca in conjunto.get("pecas", []):
+		var pecas: Array = conjunto.get("pecas", [])
+		for peca in pecas:
 			_pendurar_peca(esqueleto, "roupas/" + String(peca))
+		if not pecas.is_empty():
+			_encolher_o_corpo(esqueleto)
 
 	var cabelo := CABELOS_MODULARES[_index("hair", CABELOS_MODULARES.size())]
 	if cabelo != "":
 		_pendurar_peca(esqueleto, "cabelos/" + cabelo)
+
+
+## Encolhe a pele por dentro da roupa.
+##
+## Roupa e corpo sao malhas separadas modeladas quase na mesma superficie, e
+## "quase" e o problema: o peito e os bracos furavam a roupa em movimento, que e
+## o que se via como "roupa bugada". Deslocar cada vertice para dentro ao longo
+## da normal e o remedio padrao para isso, e o material ja sabe fazer (`grow`).
+##
+## Um centimetro basta e nao deforma nada visivel -- so o que ja estava
+## escondido sob a roupa e que passou a ficar escondido de verdade.
+##
+## Nao mexe na cabeca nem nas maos porque nao precisa: elas nao tem roupa por
+## cima, e um centimetro nelas nao muda nada na tela.
+const ENCOLHIMENTO_SOB_A_ROUPA := 0.01
+
+
+func _encolher_o_corpo(esqueleto: Skeleton3D) -> void:
+	for no in esqueleto.get_children():
+		if not (no is MeshInstance3D):
+			continue
+		var malha := no as MeshInstance3D
+		# So a pele: as pecas de roupa entraram como irmas e nao podem encolher
+		# junto, senao o problema so muda de lado.
+		if not String(malha.name).begins_with("SuperHero"):
+			continue
+		var material := malha.get_active_material(0)
+		if material == null or not (material is StandardMaterial3D):
+			continue
+		var copia := (material as StandardMaterial3D).duplicate() as StandardMaterial3D
+		copia.grow = true
+		copia.grow_amount = -ENCOLHIMENTO_SOB_A_ROUPA
+		malha.material_override = copia
 
 
 ## Tira as malhas de um arquivo de peca e prende no esqueleto que ja existe.
@@ -636,6 +705,12 @@ func _pendurar_peca(esqueleto: Skeleton3D, relativo: String) -> void:
 		malha.get_parent().remove_child(malha)
 		esqueleto.add_child(malha)
 		malha.skeleton = NodePath("..")
+
+	if OS.is_debug_build():
+		var nomes: Array[String] = []
+		for m in malhas:
+			nomes.append("%s(%d sup)" % [m.name, m.mesh.get_surface_count() if m.mesh != null else 0])
+		GameLog.verbose(GameLog.Channel.SYSTEM, "  peca %-28s -> %s" % [relativo, ", ".join(nomes)])
 
 	cena.queue_free()
 
