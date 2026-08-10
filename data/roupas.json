@@ -1,0 +1,95 @@
+{
+  "_comentario": [
+    "Roupas do kit modular. Saiu do codigo para ca por um motivo pratico: o",
+    "guarda-roupa (F4 em build de debug) escreve neste arquivo, entao ajustar",
+    "uma roupa deixou de ser mexer em GDScript e virou mexer no jogo.",
+    "",
+    "A ordem importa: o indice 0 e o que veste quem nao escolhe nada. Por isso",
+    "'Sem roupa' fica no fim -- com ela na frente, todo personagem novo nascia pelado.",
+    "",
+    "Cada peca pode ter 'deslocamento' [x,y,z] e 'escala'. Sao para quando a peca",
+    "flutua ou afunda; peca skinada acompanha o osso, entao o ajuste e fino, nao",
+    "uma mudanca de lugar.",
+    "",
+    "As pecas nao precisam vir do mesmo conjunto: da para vestir o corpo do",
+    "Campones por baixo do colete do Patrulheiro. E o que o guarda-roupa serve."
+  ],
+  "pecas_disponiveis": {
+    "masculino": [
+      "Male_Peasant_Body",
+      "Male_Peasant_Arms",
+      "Male_Peasant_Legs",
+      "Male_Peasant_Feet",
+      "Male_Ranger_Body",
+      "Male_Ranger_Arms",
+      "Male_Ranger_Legs",
+      "Male_Ranger_Feet_Boots",
+      "Male_Ranger_Acc_Pauldron",
+      "Male_Ranger_Head_Hood"
+    ],
+    "feminino": [
+      "Female_Peasant_Body",
+      "Female_Peasant_Arms",
+      "Female_Peasant_Legs",
+      "Female_Peasant_Feet",
+      "Female_Ranger_Body",
+      "Female_Ranger_Arms",
+      "Female_Ranger_Legs",
+      "Female_Ranger_Feet",
+      "Female_Ranger_Acc_Pauldrons",
+      "Female_Ranger_Head_Hood"
+    ]
+  },
+  "conjuntos": {
+    "masculino": [
+      {
+        "nome": "Camponês",
+        "pecas": [
+          "Male_Peasant_Body",
+          "Male_Peasant_Arms",
+          "Male_Peasant_Legs",
+          "Male_Peasant_Feet"
+        ]
+      },
+      {
+        "nome": "Patrulheiro",
+        "pecas": [
+          "Male_Ranger_Body",
+          "Male_Ranger_Arms",
+          "Male_Ranger_Legs",
+          "Male_Ranger_Feet_Boots",
+          "Male_Ranger_Acc_Pauldron"
+        ]
+      },
+      {
+        "nome": "Sem roupa",
+        "pecas": []
+      }
+    ],
+    "feminino": [
+      {
+        "nome": "Camponesa",
+        "pecas": [
+          "Female_Peasant_Body",
+          "Female_Peasant_Arms",
+          "Female_Peasant_Legs",
+          "Female_Peasant_Feet"
+        ]
+      },
+      {
+        "nome": "Patrulheira",
+        "pecas": [
+          "Female_Ranger_Body",
+          "Female_Ranger_Arms",
+          "Female_Ranger_Legs",
+          "Female_Ranger_Feet",
+          "Female_Ranger_Acc_Pauldrons"
+        ]
+      },
+      {
+        "nome": "Sem roupa",
+        "pecas": []
+      }
+    ]
+  }
+}

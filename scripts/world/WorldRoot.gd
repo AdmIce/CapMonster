@@ -130,6 +130,8 @@ func _abrir_painel_de_teste() -> void:
 				player.sentar()
 			"montaria":
 				player.montar()
+			"guarda-roupa":
+				add_child(GuardaRoupa.criar(player, hud))
 			"pet":
 				var dados := DataManager.get_item("sentinela_alada")
 				player.alternar_pet(String(dados.get("pet_modelo", "")))
@@ -721,6 +723,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		SaveManager.set_setting(CameraRig.CHAVE_MODO, camera_rig.id_do_modo())
 		Notify.show_message("Câmera: %s" % camera_rig.config()["rotulo"])
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("guarda_roupa"):
+		get_viewport().set_input_as_handled()
+		if not OS.is_debug_build():
+			return
+		if get_node_or_null("GuardaRoupa") == null:
+			add_child(GuardaRoupa.criar(player, hud))
 	elif event.is_action_pressed("toggle_debug") and debug_menu != null:
 		debug_menu.toggle()
 		get_viewport().set_input_as_handled()

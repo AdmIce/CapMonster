@@ -43,6 +43,8 @@ const DEFAULT_BINDINGS := {
 	# quem joga -- entre os dois, a tecla facil e do jogador.
 	"montaria": [KEY_F1],
 	"toggle_debug": [KEY_F3],
+	# Guarda-roupa: ferramenta de quem faz o jogo, so abre em build de debug.
+	"guarda_roupa": [KEY_F4],
 	"quick_save": [KEY_F5],
 }
 

@@ -18,6 +18,7 @@ const FILES := {
 	"creatures": "creatures.json",
 	"items": "items.json",
 	"maps": "maps.json",
+	"roupas": "roupas.json",
 	"quests": "quests.json",
 	"intro": "intro.json",
 }
@@ -267,6 +268,16 @@ func get_starting_inventory() -> Dictionary:
 
 
 # --- maps / quests ------------------------------------------------------------
+
+## Conjuntos de roupa do kit modular, por sexo do corpo.
+func conjuntos_de_roupa(sexo: String) -> Array:
+	return _raw.get("roupas", {}).get("conjuntos", {}).get(sexo, [])
+
+
+## Todas as pecas que existem para um sexo. E a lista que o guarda-roupa mostra.
+func pecas_de_roupa(sexo: String) -> Array:
+	return _raw.get("roupas", {}).get("pecas_disponiveis", {}).get(sexo, [])
+
 
 func get_map(map_id: String) -> Dictionary:
 	return _maps.get(map_id, {})

@@ -98,26 +98,14 @@ const CABELOS_MODULARES: Array[String] = [
 	"Hair_SimpleParted", "Hair_Long", "Hair_Buns", "Hair_Buzzed", "Hair_BuzzedFemale", "Hair_Beard", "",
 ]
 
-## Roupas, por corpo. A ordem segue a mesma regra do cabelo: o indice 0 e o
-## padrao de quem nao escolhe, entao "sem roupa" fica no fim. Com ele na frente,
-## todo personagem novo nascia pelado.
+## As roupas moram em `data/roupas.json`, e nao aqui.
 ##
-## Os nomes de arquivo nao sao simetricos entre os dois
-## (o masculino tem `Feet_Boots` e `Acc_Pauldron`, o feminino tem `Feet` e
-## `Acc_Pauldrons`), entao a lista e declarada inteira em vez de montada por
-## template -- template exigiria adivinhar, e adivinhar erra em silencio.
-const ROUPAS_MODULARES := {
-	"masculino": [
-		{ "nome": "Camponês", "pecas": ["Male_Peasant_Body", "Male_Peasant_Arms", "Male_Peasant_Legs", "Male_Peasant_Feet"] },
-		{ "nome": "Patrulheiro", "pecas": ["Male_Ranger_Body", "Male_Ranger_Arms", "Male_Ranger_Legs", "Male_Ranger_Feet_Boots", "Male_Ranger_Acc_Pauldron"] },
-		{ "nome": "Sem roupa", "pecas": [] },
-	],
-	"feminino": [
-		{ "nome": "Camponesa", "pecas": ["Female_Peasant_Body", "Female_Peasant_Arms", "Female_Peasant_Legs", "Female_Peasant_Feet"] },
-		{ "nome": "Patrulheira", "pecas": ["Female_Ranger_Body", "Female_Ranger_Arms", "Female_Ranger_Legs", "Female_Ranger_Feet", "Female_Ranger_Acc_Pauldrons"] },
-		{ "nome": "Sem roupa", "pecas": [] },
-	],
-}
+## Motivo pratico: o guarda-roupa (F4 em build de debug) escreve naquele
+## arquivo. Com a lista no codigo, ajustar uma roupa exigiria editar GDScript e
+## reiniciar; em dado, e mexer no jogo e salvar.
+static func conjuntos_de_roupa(sexo: String) -> Array:
+	return DataManager.conjuntos_de_roupa(sexo)
+
 
 const ANIM_PARADO := "Idle"
 const ANIM_ANDANDO := "Walking_A"
@@ -203,7 +191,7 @@ static func rotulos_de_roupa(indice_do_corpo: int) -> Array[String]:
 	var escolha: Dictionary = PERSONAGENS[clampi(indice_do_corpo, 0, PERSONAGENS.size() - 1)]
 	if String(escolha.get("kit", KIT_KAYKIT)) == KIT_MODULAR:
 		var nomes: Array[String] = []
-		for conjunto in ROUPAS_MODULARES.get(String(escolha.get("sexo", "masculino")), []):
+		for conjunto in conjuntos_de_roupa(String(escolha.get("sexo", "masculino"))):
 			nomes.append(String(conjunto.get("nome", "?")))
 		return nomes
 	var padrao: Array[String] = []
@@ -644,12 +632,13 @@ func _assentar_no_chao(modelo: Node3D) -> void:
 
 func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
 	var sexo := String(escolha.get("sexo", "masculino"))
-	var conjuntos: Array = ROUPAS_MODULARES.get(sexo, [])
+	var conjuntos: Array = conjuntos_de_roupa(sexo)
 	if not conjuntos.is_empty():
 		var conjunto: Dictionary = conjuntos[_index("outfit", conjuntos.size())]
 		var pecas: Array = conjunto.get("pecas", [])
+		var ajustes: Dictionary = conjunto.get("ajustes", {})
 		for peca in pecas:
-			_pendurar_peca(esqueleto, "roupas/" + String(peca))
+			_pendurar_peca(esqueleto, "roupas/" + String(peca), ajustes.get(String(peca), {}))
 		if not pecas.is_empty():
 			# A ordem importa: primeiro a pele que falta nas pecas, depois o
 			# encolhimento -- senao o encolhimento seria copiado junto e o
@@ -740,7 +729,7 @@ func _encolher_o_corpo(esqueleto: Skeleton3D) -> void:
 ## esqueleto do proprio arquivo, e depois da mudanca de pai esse caminho aponta
 ## para um no que foi jogado fora -- a peca aparece em T, parada, enquanto o
 ## corpo anda.
-func _pendurar_peca(esqueleto: Skeleton3D, relativo: String) -> void:
+func _pendurar_peca(esqueleto: Skeleton3D, relativo: String, ajuste: Dictionary = {}) -> void:
 	var caminho := PASTA_MODULAR + relativo + ".gltf"
 	if not ResourceLoader.exists(caminho):
 		GameLog.warn(GameLog.Channel.SYSTEM, "Peça ausente: %s" % caminho)
@@ -752,10 +741,23 @@ func _pendurar_peca(esqueleto: Skeleton3D, relativo: String) -> void:
 		if no is MeshInstance3D:
 			malhas.append(no as MeshInstance3D)
 
+	# Deslocamento e escala vindos do dado. Peca skinada acompanha o osso, entao
+	# isto e ajuste fino -- para quando a peca flutua ou afunda um pouco, e nao
+	# para mudar ela de lugar.
+	var desloc := Vector3.ZERO
+	var lista: Array = ajuste.get("deslocamento", [])
+	if lista.size() == 3:
+		desloc = Vector3(float(lista[0]), float(lista[1]), float(lista[2]))
+	var escala := float(ajuste.get("escala", 1.0))
+
 	for malha in malhas:
 		malha.get_parent().remove_child(malha)
 		esqueleto.add_child(malha)
 		malha.skeleton = NodePath("..")
+		if desloc != Vector3.ZERO:
+			malha.position += desloc
+		if not is_equal_approx(escala, 1.0):
+			malha.scale = Vector3.ONE * escala
 
 	if OS.is_debug_build():
 		for m in malhas:
