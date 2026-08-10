@@ -228,6 +228,10 @@ var _anim_sentar_levanta: String = ANIM_SENTAR_LEVANTA
 ## monta em pe, que e feio, mas e melhor do que uma pose de sentar no chao em
 ## cima de um cavalo.
 var _anim_montado: String = ""
+## Superficies de peca que receberam a pele do corpo (o antebraco de fora).
+## Guardadas por nome+indice porque elas nao podem ser engordadas junto com o
+## pano -- ver `_afastar_o_pano`.
+var _superficies_de_pele: Dictionary = {}
 var _speed_ratio: float = 0.0
 var _interact_timer: float = 0.0
 
@@ -643,8 +647,12 @@ func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
 			# A ordem importa: primeiro a pele que falta nas pecas, depois o
 			# encolhimento -- senao o encolhimento seria copiado junto e o
 			# antebraco tambem afundaria.
+			# A ordem importa: a pele emprestada e identificada por "superficie
+			# sem textura", entao ela tem de ser resolvida antes de o pano
+			# ganhar material novo.
 			_emprestar_a_pele(esqueleto)
-			_encolher_o_corpo(esqueleto)
+			_afastar_o_pano(esqueleto)
+			_encolher_a_pele(esqueleto)
 
 	var cabelo := CABELOS_MODULARES[_index("hair", CABELOS_MODULARES.size())]
 	if cabelo != "":
@@ -662,6 +670,7 @@ func _vestir_modular(esqueleto: Skeleton3D, escolha: Dictionary) -> void:
 ## Era o que aparecia como "a roupa em algumas partes sem textura". Medido: em
 ## `Male_Ranger_Arms`, a superficie 1 chega com albedo branco e nada mais.
 func _emprestar_a_pele(esqueleto: Skeleton3D) -> void:
+	_superficies_de_pele.clear()
 	var pele := _material_da_pele(esqueleto)
 	if pele == null:
 		return
@@ -677,6 +686,10 @@ func _emprestar_a_pele(esqueleto: Skeleton3D) -> void:
 			if material is StandardMaterial3D and (material as StandardMaterial3D).albedo_texture != null:
 				continue
 			malha.set_surface_override_material(i, pele)
+			# Anotado porque depois disto a superficie **passa a ter** textura, e
+			# o teste "sem textura" deixa de distinguir pano de pele. Sem a
+			# anotacao, o antebraco engordaria junto com o pano.
+			_superficies_de_pele[_chave_de_superficie(malha, i)] = true
 			if OS.is_debug_build():
 				GameLog.verbose(GameLog.Channel.SYSTEM, "  pele emprestada -> %s sup%d" % [malha.name, i])
 
@@ -690,37 +703,47 @@ func _material_da_pele(esqueleto: Skeleton3D) -> StandardMaterial3D:
 	return null
 
 
-## Encolhe a pele por dentro da roupa.
+## Afasta o pano da pele.
 ##
-## Roupa e corpo sao malhas separadas modeladas quase na mesma superficie, e
-## "quase" e o problema: o peito e os bracos furavam a roupa em movimento, que e
-## o que se via como "roupa bugada". Deslocar cada vertice para dentro ao longo
-## da normal e o remedio padrao para isso, e o material ja sabe fazer (`grow`).
+## Roupa e corpo sao modelados quase na mesma superficie, e "quase" e o
+## problema: nas costas a camisa e justa e as duas brigam pelo mesmo plano, o
+## que aparece como uma mancha de pele no meio do pano.
 ##
-## Um centimetro basta e nao deforma nada visivel -- so o que ja estava
-## escondido sob a roupa e que passou a ficar escondido de verdade.
+## A primeira tentativa foi **encolher a pele**, e ela tem um defeito que so se
+## ve com o numero na mao: cabeca, pescoco e maos estao na **mesma malha** do
+## tronco, entao encolher o bastante para resolver as costas (2 cm ou mais)
+## afinaria o rosto junto.
 ##
-## Nao mexe na cabeca nem nas maos porque nao precisa: elas nao tem roupa por
-## cima, e um centimetro nelas nao muda nada na tela.
-const ENCOLHIMENTO_SOB_A_ROUPA := 0.01
+## Engordar o pano nao tem esse problema: peca de roupa so existe onde ha pano.
+## Um centimetro e meio para fora e invisivel na silhueta e suficiente para o
+## pano ganhar a disputa em todo lugar.
+const AFASTAMENTO_DO_PANO := 0.022
 
 
-func _encolher_o_corpo(esqueleto: Skeleton3D) -> void:
+func _afastar_o_pano(esqueleto: Skeleton3D) -> void:
 	for no in esqueleto.get_children():
 		if not (no is MeshInstance3D):
 			continue
 		var malha := no as MeshInstance3D
-		# So a pele: as pecas de roupa entraram como irmas e nao podem encolher
-		# junto, senao o problema so muda de lado.
-		if not String(malha.name).begins_with("SuperHero"):
+		# A pele nao: ela e a referencia, e o corpo ficaria inchado.
+		if malha.mesh == null or String(malha.name).begins_with("SuperHero"):
 			continue
-		var material := malha.get_active_material(0)
-		if material == null or not (material is StandardMaterial3D):
-			continue
-		var copia := (material as StandardMaterial3D).duplicate() as StandardMaterial3D
-		copia.grow = true
-		copia.grow_amount = -ENCOLHIMENTO_SOB_A_ROUPA
-		malha.material_override = copia
+
+		for i in malha.mesh.get_surface_count():
+			var m := malha.get_active_material(i)
+			if not (m is StandardMaterial3D):
+				continue
+			# A superficie que recebeu pele emprestada fica como esta: ela **e**
+			# pele (o antebraco de fora), e engordar deixaria o braco mais gordo
+			# que o resto do corpo.
+			if _superficies_de_pele.has(_chave_de_superficie(malha, i)):
+				continue
+			if (m as StandardMaterial3D).albedo_texture == null:
+				continue
+			var copia := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+			copia.grow = true
+			copia.grow_amount = AFASTAMENTO_DO_PANO
+			malha.set_surface_override_material(i, copia)
 
 
 ## Tira as malhas de um arquivo de peca e prende no esqueleto que ja existe.
@@ -1150,3 +1173,37 @@ func desmontar() -> void:
 	_state = State.IDLE
 	_transicao = ""
 	_tocar(_anim_parado)
+
+
+## Encolhe a pele, junto com o afastamento do pano.
+##
+## Os dois somados, e nao um so, por um motivo medido: a roupa deste pacote foi
+## modelada para o corpo "Regular" (as texturas dela se chamam T_Regular_*), e o
+## pacote gratis so traz o corpo "Superhero", que e mais musculoso. As costas
+## sobram alguns centimetros para fora do pano, e por isso um afastamento
+## sozinho nao resolvia.
+##
+## Fica pequeno de proposito: cabeca, pescoco e maos sao a mesma malha do
+## tronco, e um valor grande aqui afinaria o rosto.
+const ENCOLHIMENTO_DA_PELE := 0.012
+
+
+func _encolher_a_pele(esqueleto: Skeleton3D) -> void:
+	for no in esqueleto.get_children():
+		if not (no is MeshInstance3D):
+			continue
+		var malha := no as MeshInstance3D
+		if malha.mesh == null or not String(malha.name).begins_with("SuperHero"):
+			continue
+		for i in malha.mesh.get_surface_count():
+			var m := malha.get_active_material(i)
+			if not (m is StandardMaterial3D):
+				continue
+			var copia := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+			copia.grow = true
+			copia.grow_amount = -ENCOLHIMENTO_DA_PELE
+			malha.set_surface_override_material(i, copia)
+
+
+func _chave_de_superficie(malha: MeshInstance3D, indice: int) -> String:
+	return "%s:%d" % [malha.name, indice]
