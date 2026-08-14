@@ -66,8 +66,11 @@ static func build_modelo(parent: Node3D, map_data: Dictionary) -> void:
 			if descendente is MeshInstance3D and (descendente as MeshInstance3D).mesh != null:
 				var m := descendente as MeshInstance3D
 				var c := m.global_transform * m.mesh.get_aabb()
-				GameLog.verbose(GameLog.Channel.WORLD, "  peca %-22s %6.1f x %5.1f x %6.1f  visivel=%s" % [
-					m.name, c.size.x, c.size.y, c.size.z, m.visible])
+				GameLog.verbose(GameLog.Channel.WORLD,
+					"  peca %-22s centro (%5.1f,%5.1f,%5.1f)  tam %5.1f x %4.1f x %5.1f  visivel=%s" % [
+						m.name,
+						c.position.x + c.size.x * 0.5, c.position.y + c.size.y * 0.5, c.position.z + c.size.z * 0.5,
+						c.size.x, c.size.y, c.size.z, m.visible])
 
 	if bool(config.get("colisao", true)):
 		_colidir_com_o_cenario(no)

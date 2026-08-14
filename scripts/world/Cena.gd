@@ -32,9 +32,12 @@ signal terminou()
 const DISTANCIA_DE_CHEGADA := 0.45
 const SEGUNDOS_MAXIMOS_ANDANDO := 12.0
 
-## Fracao do passo normal durante a cena. A 0,45 a travessia do quarto passa de
-## meio segundo para pouco mais de um -- tempo de a camera contar alguma coisa.
-const VELOCIDADE_DA_CENA := 0.45
+## Fracao do passo normal durante a cena.
+##
+## Medido no quarto: a 1,0 a travessia dura 0,3 s, que na tela e um teleporte; a
+## 0,45 dura 0,9 s, ainda apressado. A 0,30 passa de um segundo e meio, que e o
+## tempo de a camera virar e o jogador entender para onde ele esta indo.
+const VELOCIDADE_DA_CENA := 0.30
 
 var _jogador: PlayerController = null
 var _camera: CameraRig = null

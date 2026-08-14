@@ -42,7 +42,8 @@
         "ambient_energy": 0.55,
         "sun_energy": 0.5
       },
-      "spawn_points": { "start": [1.2, 1.6] },
+      "_spawn": "Medido em cena: a cama ocupa x de -1,4 a 2,8 e z de 0,9 a 6,3, com o colchao a 1,2 m. Nascer ali punha a camera de primeira pessoa 38 cm acima do lencol, e a tela virava lencol. Aqui ele acorda ao lado da cama, no vao livre entre ela e a TV.",
+      "spawn_points": { "start": [-2.6, 1.7] },
       "_cena": [
         "A abertura, encenada: o jogador nao controla nada aqui.",
         "Ele acorda na cama, vai ate a televisao, tenta desligar, desiste e volta a dormir.",
@@ -52,9 +53,9 @@
       "cena": [
         { "tipo": "esperar", "segundos": 1.2 },
         { "tipo": "falar", "segundos_por_linha": 2.4, "quem": "", "linhas": ["Você acorda com a televisão ligada. De novo."] },
-        { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 1.0 },
-        { "tipo": "andar", "para": [-0.6, -0.2] },
-        { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 0.6 },
+        { "tipo": "olhar", "para": [-0.8, -1.6], "segundos": 1.2 },
+        { "tipo": "andar", "para": [-0.8, 0.1] },
+        { "tipo": "olhar", "para": [-0.8, -1.6], "segundos": 0.8 },
         { "tipo": "falar", "segundos_por_linha": 2.8, "quem": "Televisão", "linhas": [
             "SO, WHAT DO YOU FEEL?",
             "A pergunta fica piscando. Não é para você — é o que estava passando quando você dormiu."
@@ -66,8 +67,8 @@
             "Tenta de novo. Nada.",
             "Tudo bem. Amanhã você resolve isso. Volta pra cama."
           ] },
-        { "tipo": "olhar", "para": [1.4, 1.8], "segundos": 1.0 },
-        { "tipo": "andar", "para": [1.2, 1.6] },
+        { "tipo": "olhar", "para": [0.7, 3.0], "segundos": 1.2 },
+        { "tipo": "andar", "para": [-2.6, 1.7] },
         { "tipo": "falar", "segundos_por_linha": 2.6, "quem": "", "linhas": [
             "Você se deita sem tirar a roupa.",
             "O sono chega antes de você decidir o que fazer com a televisão."
@@ -85,8 +86,8 @@
           "id": "tv",
           "name": "Televisão",
           "verb": "Assistir",
-          "pos": [-1.6, -0.6],
-          "altura": 0.6,
+          "pos": [-0.8, -1.4],
+          "altura": 0.9,
           "raio": 2.0,
           "marca": "falou_com_a_tv",
           "lines": [
@@ -99,8 +100,8 @@
           "id": "cama",
           "name": "Cama",
           "verb": "Deitar na",
-          "pos": [1.2, 1.6],
-          "altura": 0.3,
+          "pos": [0.2, 1.4],
+          "altura": 0.6,
           "raio": 2.2,
           "exige_marca": "falou_com_a_tv",
           "recado_bloqueado": "Ainda não. Tem alguma coisa passando na televisão.",
