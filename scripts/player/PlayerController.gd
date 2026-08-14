@@ -44,6 +44,15 @@ const POSITION_REPORT_DISTANCE := 1.5
 ## vetor que o teclado escreveria. O resto do controlador não muda.
 var auto_enabled: bool = false
 var auto_input: Vector2 = Vector2.ZERO
+## O automatico corre por padrao -- e o que o piloto automatico quer, porque
+## ele existe para o jogador nao ficar esperando. As cenas desligam: personagem
+## atravessando o quarto em disparada nao e cinema, e uma caminhada de 2,5 m a
+## 8,2 m/s dura 0,3 s, que na tela e um teleporte.
+var auto_correndo: bool = true
+## Multiplicador da velocidade no modo automatico. As cenas usam menos que 1
+## para o passo ter peso: o quarto tem 2,5 m de ponta a ponta e, no passo
+## normal, a travessia dura meio segundo -- na tela isso nao le como caminhada.
+var auto_velocidade: float = 1.0
 
 var voando: bool = false
 ## Sentado de propria vontade (tecla Insert). O descanso na fogueira nao passa
@@ -179,12 +188,22 @@ func _physics_process(delta: float) -> void:
 				direita = camera_rig.direcao_direita()
 			direcao = direita * input.x + frente * -input.y
 			running = Input.is_action_pressed("run")
-		elif auto_enabled:
-			# Modo automático: o AutoPilot já calcula em espaço de mundo. Passar
-			# isto pela base da câmera faria o personagem girar em círculo em
-			# terceira pessoa, porque a câmera gira junto com ele.
-			direcao = Vector3(auto_input.x, 0.0, auto_input.y).limit_length(1.0)
-			running = true
+
+	# **Fora** do `input_enabled`, e nao dentro dele.
+	#
+	# Este bloco estava aninhado no teclado, e o efeito so apareceu na cena de
+	# abertura: ela desliga o controle do jogador para encenar, e com isso
+	# desligava tambem o que movia o personagem -- ele ficava parado na cama a
+	# cena inteira. O piloto automatico nunca sofreu porque ele roda com o
+	# controle ligado.
+	#
+	# O teclado continua tendo prioridade: se ha tecla, o automatico nao entra.
+	if direcao == Vector3.ZERO and auto_enabled:
+		# O AutoPilot e a cena ja calculam em espaco de mundo. Passar isto pela
+		# base da camera faria o personagem girar em circulo em terceira pessoa,
+		# porque a camera gira junto com ele.
+		direcao = Vector3(auto_input.x, 0.0, auto_input.y).limit_length(1.0)
+		running = auto_correndo
 
 	# Antes de virar velocidade: zerar a direcao depois de `desired` ja calculado
 	# deixaria o personagem escorregando pelo chao na pose de sentado.
@@ -201,6 +220,8 @@ func _physics_process(delta: float) -> void:
 	if montado and not voando:
 		# Cavalo nao tem "andar devagar": quem monta quer chegar antes.
 		target_speed = VELOCIDADE_MONTADO
+	if auto_enabled and not is_equal_approx(auto_velocidade, 1.0):
+		target_speed *= auto_velocidade
 	var desired := direcao * target_speed
 
 	if input_enabled and not auto_enabled and Input.is_action_just_pressed("jump"):

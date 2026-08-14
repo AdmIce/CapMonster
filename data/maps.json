@@ -51,16 +51,16 @@
       ],
       "cena": [
         { "tipo": "esperar", "segundos": 1.2 },
-        { "tipo": "falar", "quem": "", "linhas": ["Você acorda com a televisão ligada. De novo."] },
+        { "tipo": "falar", "segundos_por_linha": 2.4, "quem": "", "linhas": ["Você acorda com a televisão ligada. De novo."] },
         { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 1.0 },
         { "tipo": "andar", "para": [-0.6, -0.2] },
         { "tipo": "olhar", "para": [-1.6, -0.6], "segundos": 0.6 },
-        { "tipo": "falar", "quem": "Televisão", "linhas": [
+        { "tipo": "falar", "segundos_por_linha": 2.8, "quem": "Televisão", "linhas": [
             "SO, WHAT DO YOU FEEL?",
             "A pergunta fica piscando. Não é para você — é o que estava passando quando você dormiu."
           ] },
         { "tipo": "esperar", "segundos": 0.6 },
-        { "tipo": "falar", "quem": "", "linhas": [
+        { "tipo": "falar", "segundos_por_linha": 2.2, "quem": "", "linhas": [
             "Você estica o braço para desligar.",
             "O botão afunda e volta. A tela continua verde.",
             "Tenta de novo. Nada.",
@@ -68,7 +68,7 @@
           ] },
         { "tipo": "olhar", "para": [1.4, 1.8], "segundos": 1.0 },
         { "tipo": "andar", "para": [1.2, 1.6] },
-        { "tipo": "falar", "quem": "", "linhas": [
+        { "tipo": "falar", "segundos_por_linha": 2.6, "quem": "", "linhas": [
             "Você se deita sem tirar a roupa.",
             "O sono chega antes de você decidir o que fazer com a televisão."
           ] },

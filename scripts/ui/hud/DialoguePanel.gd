@@ -108,6 +108,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	_advance()
 
 
+## Passa para a próxima linha sem esperar tecla. É o que as cenas usam.
+##
+## Revela o resto do texto antes de virar a linha: sem isso, uma cena com o
+## tempo curto trocaria de fala com metade dela ainda escondida.
+func avancar_linha() -> void:
+	if not _is_open:
+		return
+	_text_label.visible_ratio = 1.0
+	_revealed = float(_text_label.text.length())
+	_advance()
+
+
 func _advance() -> void:
 	# First press finishes the reveal, second press moves on.
 	if _text_label.visible_ratio < 1.0:

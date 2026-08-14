@@ -83,7 +83,10 @@ func _encenar_abertura() -> void:
 	if passos.is_empty():
 		return
 	var marca := "cena_%s_vista" % map_id
-	if bool(GameManager.player.get_flag(marca, false)):
+	# `-- --recena` reencena mesmo ja vista. Sem isto, conferir um ajuste na
+	# abertura exigia criar personagem novo a cada tentativa.
+	var forcar := OS.is_debug_build() and OS.get_cmdline_user_args().has("--recena")
+	if not forcar and bool(GameManager.player.get_flag(marca, false)):
 		return
 	GameManager.player.set_flag(marca, true)
 

@@ -15,7 +15,9 @@ extends Node
 ##
 ##   andar   {"para": [x, z]}                caminha até o ponto e espera chegar
 ##   olhar   {"para": [x, z]}                vira a câmera e o corpo para o ponto
-##   falar   {"quem": "...", "linhas": [..]} abre o diálogo e espera fechar
+##   falar   {"quem": "...", "linhas": [..], "segundos_por_linha": 2.5}
+##           abre o diálogo; com `segundos_por_linha` ele corre sozinho, sem
+##           `segundos_por_linha` espera a tecla
 ##   esperar {"segundos": 1.2}               pausa
 ##   ir      {"cena": "character_select"}    troca de cena e encerra
 ##
@@ -30,11 +32,16 @@ signal terminou()
 const DISTANCIA_DE_CHEGADA := 0.45
 const SEGUNDOS_MAXIMOS_ANDANDO := 12.0
 
+## Fracao do passo normal durante a cena. A 0,45 a travessia do quarto passa de
+## meio segundo para pouco mais de um -- tempo de a camera contar alguma coisa.
+const VELOCIDADE_DA_CENA := 0.45
+
 var _jogador: PlayerController = null
 var _camera: CameraRig = null
 var _dialogo: DialoguePanel = null
 var _passos: Array = []
 var _rodando := false
+var _mascara_guardada: int = 0
 
 
 static func criar(passos: Array) -> Cena:
@@ -56,6 +63,17 @@ func encenar(jogador: PlayerController, camera: CameraRig, dialogo: DialoguePane
 	# personagem, pelo mesmo caminho que o piloto automático usa.
 	_jogador.input_enabled = false
 	_jogador.auto_enabled = true
+	_jogador.auto_correndo = false
+	_jogador.auto_velocidade = VELOCIDADE_DA_CENA
+
+	# A colisao sai durante a cena.
+	#
+	# O caminho aqui e roteirizado, entao parede e movel so tem como atrapalhar:
+	# medido, o personagem acordava em cima da cama (que e solida, porque a
+	# colisao do quarto vem das proprias malhas) e nao saia do lugar -- 12 s
+	# empurrando contra o colchao. Fora da cena a colisao volta, e ai ela serve.
+	_mascara_guardada = _jogador.collision_mask
+	_jogador.collision_mask = 0
 
 	for passo in _passos:
 		if not is_instance_valid(_jogador):
@@ -72,7 +90,11 @@ func _executar(passo: Dictionary) -> void:
 		"olhar":
 			await _olhar(_ponto(passo.get("para", [0, 0])), float(passo.get("segundos", 0.8)))
 		"falar":
-			await _falar(String(passo.get("quem", "")), passo.get("linhas", []))
+			await _falar(
+				String(passo.get("quem", "")),
+				passo.get("linhas", []),
+				float(passo.get("segundos_por_linha", 0.0))
+			)
 		"esperar":
 			await get_tree().create_timer(float(passo.get("segundos", 1.0))).timeout
 		"ir":
@@ -82,6 +104,7 @@ func _executar(passo: Dictionary) -> void:
 
 
 func _andar(destino: Vector2) -> void:
+	var partiu := _jogador.plane_position()
 	var gasto := 0.0
 	while gasto < SEGUNDOS_MAXIMOS_ANDANDO:
 		if not is_instance_valid(_jogador):
@@ -98,10 +121,16 @@ func _andar(destino: Vector2) -> void:
 		await get_tree().process_frame
 
 	_jogador.auto_input = Vector2.ZERO
+	if gasto < SEGUNDOS_MAXIMOS_ANDANDO:
+		GameLog.verbose(GameLog.Channel.WORLD,
+			"Cena: cheguei em (%.1f, %.1f) em %.1f s." % [destino.x, destino.y, gasto])
 	if gasto >= SEGUNDOS_MAXIMOS_ANDANDO:
+		# Quanto ele andou separa "esbarrou em algo" de "nao saiu do lugar", e as
+		# duas coisas pedem consertos diferentes.
+		var andou := _jogador.plane_position().distance_to(partiu)
 		GameLog.warn(GameLog.Channel.WORLD,
-			"Cena: não cheguei em (%.1f, %.1f) em %.0f s; seguindo assim mesmo." % [
-				destino.x, destino.y, SEGUNDOS_MAXIMOS_ANDANDO
+			"Cena: não cheguei em (%.1f, %.1f) em %.0f s (andei %.2f m); seguindo assim mesmo." % [
+				destino.x, destino.y, SEGUNDOS_MAXIMOS_ANDANDO, andou
 			])
 
 
@@ -115,11 +144,24 @@ func _olhar(alvo: Vector2, segundos: float) -> void:
 		await get_tree().process_frame
 
 
-func _falar(quem: String, linhas: Array) -> void:
+## Com `segundos_por_linha`, a fala corre sozinha -- e o que faz a abertura ser
+## cinema em vez de um diálogo que espera clique. Sem o campo, espera a tecla,
+## que ainda é o certo para conversa com NPC.
+func _falar(quem: String, linhas: Array, segundos_por_linha: float) -> void:
 	if _dialogo == null or linhas.is_empty():
 		return
 	_dialogo.open(quem, linhas)
-	await _dialogo.finished
+
+	if segundos_por_linha <= 0.0:
+		await _dialogo.finished
+		return
+
+	# Uma passada por linha, e uma a mais para fechar a última.
+	for i in linhas.size():
+		await get_tree().create_timer(segundos_por_linha).timeout
+		if _dialogo == null or not is_instance_valid(_dialogo) or not _dialogo.is_open():
+			return
+		_dialogo.avancar_linha()
 
 
 func _ir(cena: String) -> void:
@@ -154,4 +196,7 @@ func _encerrar() -> void:
 		_jogador.auto_enabled = false
 		_jogador.auto_input = Vector2.ZERO
 		_jogador.input_enabled = true
+		_jogador.auto_correndo = true
+		_jogador.auto_velocidade = 1.0
+		_jogador.collision_mask = _mascara_guardada
 	terminou.emit()
