@@ -17,6 +17,8 @@ extends Node3D
 
 signal creature_spawned(creature: WildCreature)
 signal encounter_triggered(creature: WildCreature)
+## Repassado do monstro para o mundo, que e quem paga a recompensa.
+signal derrubado(creature: WildCreature)
 
 const TICK_SECONDS := 1.0
 const MIN_DISTANCE_FROM_PLAYER := 12.0
@@ -173,6 +175,7 @@ func _materializar(creature: CreatureData, spawn: Vector2, zone: Dictionary) -> 
 	var node := WildCreature.create(creature, Vector3(spawn.x, 0.0, spawn.y), zone)
 	node.patrol_radius = 5.0
 	node.encounter_triggered.connect(_on_encounter)
+	node.derrubado.connect(func(quem: WildCreature): derrubado.emit(quem))
 	node.despawned.connect(_on_despawned.bind(zone.get("id", "")))
 	add_child(node)
 	return node

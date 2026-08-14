@@ -11,6 +11,9 @@ extends CharacterBody3D
 ## IDLE -> PATROL -> CHASE -> CONTACT -> RETREAT.
 
 signal encounter_triggered(source: WildCreature)
+## Morreu de pancada. Quem escuta paga a recompensa -- o monstro nao sabe
+## quanto ele vale, e nem deveria.
+signal derrubado(source: WildCreature)
 signal despawned(source: WildCreature)
 
 enum State { IDLE, PATROL, CHASE, CONTACT, RETREAT }
@@ -41,6 +44,7 @@ var _animador: CreatureAnimator = null
 var _bob_phase: float = 0.0
 var _cooldown: float = 0.0
 var _rng := RandomNumberGenerator.new()
+var _barra: HealthBar3D = null
 
 
 static func create(creature: CreatureData, spawn_position: Vector3, zone: Dictionary) -> WildCreature:
@@ -59,11 +63,25 @@ func _ready() -> void:
 	collision_mask = GameLayers.WORLD
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	add_to_group("wild_creature")
+	_montar_barra()
 
 	_build_collider()
 	_build_model()
 	_build_awareness()
 	_enter_state(State.IDLE)
+
+
+## Barra de vida sobre a cabeca.
+##
+## Combate em tempo real sem barra e chute: o jogador nao tem como saber se
+## esta perto de derrubar o bicho ou se esta batendo em pedra.
+func _montar_barra() -> void:
+	_barra = HealthBar3D.new(false)
+	_barra.position = Vector3(0, _altura_do_texto() + 0.35, 0)
+	add_child(_barra)
+	if data != null:
+		_barra.configurar(data.display_name(), data.level)
+		_barra.definir_proporcao(data.hp_ratio(), true)
 
 
 func _build_collider() -> void:
@@ -235,17 +253,24 @@ func _animate(delta: float) -> void:
 		orbs.rotation.y += delta * 1.2
 
 
+## Encostou no jogador: bate nele.
+##
+## Antes isto abria a tela de batalha por turnos. Agora o combate acontece no
+## mundo, entao encostar e dar o golpe -- o `_cooldown` que existia para nao
+## reabrir a tela virou o intervalo entre as pancadas, que e a mesma ideia.
 func _trigger_encounter() -> void:
 	_cooldown = ENCOUNTER_COOLDOWN
 	_enter_state(State.CONTACT)
-	GameLog.info(
-		GameLog.Channel.WORLD,
-		"Encontro: %s Nv.%d (%s, %s)" % [
-			data.display_name(), data.level,
-			DataManager.get_element_name(data.element()),
-			DataManager.get_rarity_name(data.rarity())
-		]
-	)
+
+	if _player == null or not is_instance_valid(_player) or not (_player is PlayerController):
+		return
+	var jogador := _player as PlayerController
+	var dados := GameManager.player
+	if dados == null:
+		return
+
+	var resultado := CombateDeAcao.golpe(data.attack(), dados.defesa(), data.element(), "")
+	jogador.receber_dano(resultado, self)
 	encounter_triggered.emit(self)
 
 
@@ -257,6 +282,48 @@ func pode_iniciar_encontro() -> bool:
 
 func esta_vivo() -> bool:
 	return data != null and data.is_alive()
+
+
+## Leva um golpe. Devolve quanto entrou de fato.
+##
+## Quem calcula e o `CombateDeAcao`, e nao esta funcao: o jogador tambem apanha,
+## e a regra de quanto doi tem de ser a mesma nos dois sentidos.
+func receber_dano(resultado: DamageCalculator.Resultado, de: Node3D = null) -> int:
+	if data == null or not data.is_alive():
+		return 0
+
+	var entrou := data.apply_damage(resultado.amount)
+	if entrou <= 0:
+		return 0
+
+	FloatingText3D.mostrar(self, global_position + Vector3(0, _altura_do_texto(), 0), FloatingText3D.dano(resultado))
+	if _barra != null and is_instance_valid(_barra):
+		_barra.definir_proporcao(data.hp_ratio())
+
+	if not data.is_alive():
+		morrer(de)
+		return entrou
+
+	# Apanhou: passa a perseguir quem bateu, mesmo que estivesse de costas. Um
+	# monstro que continua patrulhando depois de levar uma pancada nao le como
+	# inimigo, le como cenario.
+	if de != null and is_instance_valid(de):
+		_player = de
+		_enter_state(State.CHASE)
+	return entrou
+
+
+func morrer(_de: Node3D = null) -> void:
+	GameLog.info(GameLog.Channel.BATTLE, "%s foi derrubado." % data.display_name())
+	derrubado.emit(self)
+	despawned.emit(self)
+	queue_free()
+
+
+func _altura_do_texto() -> float:
+	# Acima da cabeca, e nao no centro: numero saindo do meio do bicho fica
+	# escondido atras dele quando a camera esta baixa.
+	return 1.4
 
 
 ## Impede novos encontros por um tempo (usado depois de fuga ou derrota, para o

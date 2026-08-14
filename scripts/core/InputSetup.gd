@@ -30,6 +30,10 @@ const DEFAULT_BINDINGS := {
 	# Sem isto a HUD inteira (mochila, automático, chat) ficava inalcançável em
 	# primeira pessoa: o cursor sumia e não havia como clicar em nada.
 	"cursor": [KEY_ALT],
+	# Golpe. No teclado tambem, e nao so no mouse: nas cameras de cima e de
+	# terceira pessoa o cursor esta solto e clicar acerta a interface, nao o
+	# monstro.
+	"atacar": [KEY_Q],
 	# Sentar onde estiver. E gesto, nao acao de jogo: nao cura, nao pausa, nao
 	# muda regra nenhuma -- so muda a pose.
 	"sentar": [KEY_INSERT],

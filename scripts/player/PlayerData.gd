@@ -46,6 +46,82 @@ var appearance: Dictionary = {
 
 var level: int = 1
 var xp: int = 0
+
+## --- o jogador como combatente ---------------------------------------------
+##
+## Ate agora a vida na tela era a da criatura lider: o jogador nao lutava, ele
+## mandava lutar. Com o combate de acao quem apanha e ele, entao ele precisa dos
+## proprios numeros.
+##
+## Sao **derivados** de nivel e classe, e nao guardados um a um. Guardar
+## atributo no save engessa o balanceamento: mexer numa formula deixaria de
+## valer para quem ja jogava, e a primeira coisa que este jogo vai precisar e
+## mexer nas formulas.
+const VIDA_BASE := 60
+const VIDA_POR_NIVEL := 12
+const ATAQUE_BASE := 10
+const ATAQUE_POR_NIVEL := 2
+const DEFESA_BASE := 6
+const DEFESA_POR_NIVEL := 1
+
+## A unica coisa de combate que **e** guardada: quanto de vida sobrou.
+var vida_atual: int = -1
+
+
+func classe() -> Dictionary:
+	return DataManager.classe(classe_id)
+
+
+func vida_maxima() -> int:
+	var mult := float(classe().get("vida", 1.0))
+	return maxi(1, int(round((VIDA_BASE + VIDA_POR_NIVEL * (level - 1)) * mult)))
+
+
+func ataque() -> int:
+	var mult := float(classe().get("ataque", 1.0))
+	return maxi(1, int(round((ATAQUE_BASE + ATAQUE_POR_NIVEL * (level - 1)) * mult)))
+
+
+func defesa() -> int:
+	var mult := float(classe().get("defesa", 1.0))
+	return maxi(0, int(round((DEFESA_BASE + DEFESA_POR_NIVEL * (level - 1)) * mult)))
+
+
+## Fracao de vida, para a barra. Cheio quando ainda nao ha valor guardado --
+## personagem novo nasce inteiro, nao pela metade.
+func vida_fracao() -> float:
+	var maxima := vida_maxima()
+	if vida_atual < 0:
+		return 1.0
+	return clampf(float(vida_atual) / float(maxi(1, maxima)), 0.0, 1.0)
+
+
+## Devolve quanto tirou de fato. Nunca passa de zero: vida negativa vira numero
+## estranho na tela e conta errada na proxima cura.
+func sofrer_dano(quantia: int) -> int:
+	if vida_atual < 0:
+		vida_atual = vida_maxima()
+	var antes := vida_atual
+	vida_atual = maxi(0, vida_atual - maxi(0, quantia))
+	return antes - vida_atual
+
+
+func curar(quantia: int) -> int:
+	var maxima := vida_maxima()
+	if vida_atual < 0:
+		vida_atual = maxima
+	var antes := vida_atual
+	vida_atual = mini(maxima, vida_atual + maxi(0, quantia))
+	return vida_atual - antes
+
+
+func restaurar_vida() -> void:
+	vida_atual = vida_maxima()
+
+
+func esta_vivo() -> bool:
+	return vida_atual != 0
+
 var gold: int = 250
 
 var current_map: String = ""
@@ -326,6 +402,7 @@ func to_dict() -> Dictionary:
 		"name": display_name,
 		"jogador_id": jogador_id,
 		"classe": classe_id,
+		"vida": vida_atual,
 		"appearance": appearance.duplicate(),
 		"level": level,
 		"xp": xp,
@@ -414,6 +491,9 @@ static func from_dict(source: Dictionary) -> PlayerData:
 	# Personagem criado antes das classes existirem cai na primeira, em vez de
 	# ficar sem nenhuma e quebrar tudo que consultar a classe.
 	data.classe_id = String(source.get("classe", "espadachim"))
+	# -1 quer dizer "nunca lutou": nasce cheio na primeira vez que alguem
+	# perguntar, em vez de nascer com zero de vida.
+	data.vida_atual = int(source.get("vida", -1))
 	data.appearance = (source.get("appearance", {}) as Dictionary).duplicate()
 	data.level = maxi(1, int(source.get("level", 1)))
 	data.xp = int(source.get("xp", 0))

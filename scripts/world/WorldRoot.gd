@@ -133,6 +133,11 @@ func _abrir_painel_de_teste() -> void:
 				player.sentar()
 			"montaria":
 				player.montar()
+			"combate":
+				# Testa o golpe de ponta a ponta: acha um monstro, chega perto,
+				# vira para ele e bate. Sem isto, "o combate funciona" so se
+				# responde jogando -- e um teste automatico nao joga.
+				call_deferred("_testar_combate")
 			"guarda-roupa":
 				add_child(GuardaRoupa.criar(player, hud))
 			"pet":
@@ -147,6 +152,44 @@ func _abrir_painel_de_teste() -> void:
 				else:
 					GameLog.warn(GameLog.Channel.WORLD, "Teste: nenhum ponto de descanso neste mapa.")
 		return
+
+
+## Golpe de teste num monstro, com relato do antes e do depois.
+func _testar_combate() -> void:
+	await get_tree().create_timer(1.5).timeout
+	var monstros := get_tree().get_nodes_in_group("wild_creature")
+	if monstros.is_empty():
+		GameLog.warn(GameLog.Channel.BATTLE, "Teste: nenhum monstro no mapa.")
+		return
+
+	var alvo := monstros[0] as WildCreature
+	var dados := GameManager.player
+	GameLog.info(GameLog.Channel.BATTLE, "Teste: jogador nv%d, ataque %d, vida %d/%d." % [
+		dados.level, dados.ataque(), dados.vida_maxima() if dados.vida_atual < 0 else dados.vida_atual, dados.vida_maxima()
+	])
+
+	# Encosta e vira para ele: o golpe so acerta o que esta no cone da frente.
+	var perto := alvo.global_position - (alvo.global_position - player.global_position).normalized() * 1.2
+	player.teleport_to(Vector2(perto.x, perto.z))
+	# `look_at` ja aponta o -Z para o alvo, e -Z e a frente aqui (o mesmo que o
+	# `_update_facing` produz andando). Somar 180 deixava o personagem de costas
+	# para o monstro, e o cone do golpe -- corretamente -- nao acertava nada.
+	player.look_at(Vector3(alvo.global_position.x, player.global_position.y, alvo.global_position.z), Vector3.UP)
+	await get_tree().process_frame
+	GameLog.info(GameLog.Channel.BATTLE, "Teste: jogador em %s, monstro em %s, distancia %.2f m." % [
+		player.global_position, alvo.global_position, player.global_position.distance_to(alvo.global_position)
+	])
+
+	for i in 3:
+		var antes := alvo.data.current_hp
+		player.atacar()
+		await get_tree().create_timer(CombateDeAcao.ESPERA_ENTRE_GOLPES + 0.1).timeout
+		if not is_instance_valid(alvo) or alvo.data == null:
+			GameLog.info(GameLog.Channel.BATTLE, "Teste: golpe %d derrubou o monstro." % (i + 1))
+			return
+		GameLog.info(GameLog.Channel.BATTLE, "Teste: golpe %d tirou %d (vida %d -> %d de %d)." % [
+			i + 1, antes - alvo.data.current_hp, antes, alvo.data.current_hp, alvo.data.max_hp()
+		])
 
 
 func _achar_descanso(no: Node) -> HealPoint:
@@ -425,6 +468,7 @@ func _build_spawner() -> void:
 	add_child(spawner)
 	spawner.setup(map_data, player)
 	spawner.encounter_triggered.connect(_on_encounter)
+	spawner.derrubado.connect(_ao_derrubar)
 
 
 func _build_autopilot() -> void:
@@ -566,14 +610,35 @@ func _on_dialogue_finished() -> void:
 
 ## Ponto de entrada do combate: encostar numa criatura selvagem abre a batalha
 ## ali mesmo, no lugar do encontro.
+## Monstro derrubado: paga a recompensa.
+##
+## Quem paga e o mundo, e nao o monstro: o bicho nao sabe quanto ele vale, e o
+## valor sai da mesma conta que o servidor usa para conferir (ver
+## RecompensaDeBatalha). Assim o numero na tela e o creditado nao divergem.
+func _ao_derrubar(criatura: WildCreature) -> void:
+	if criatura == null or criatura.data == null:
+		return
+	var lista := RecompensaDeBatalha.listar([criatura.data])
+	var conta := RecompensaDeBatalha.calcular(lista)
+	Ficha.pedir("recompensa", { "derrotados": lista })
+
+	var dados := GameManager.player
+	if dados != null:
+		var subiu := dados.grant_xp(int(conta["xp_do_jogador"]))
+		if subiu > 0:
+			AudioManager.tocar(&"nivel")
+			Notify.good("Nível %d!" % dados.level)
+			# Subir de nivel cura: e o alivio que faz subir de nivel valer no meio
+			# de uma briga, e evita o jogador subir e morrer no golpe seguinte.
+			dados.restaurar_vida()
+	QuestManager.registrar_derrota(criatura.data)
+
+
 func _on_encounter(creature: WildCreature) -> void:
-	if dialogue.is_open() or pause_menu.is_open() or battle.em_batalha:
-		return
-	if inventory != null and inventory.esta_aberto():
-		return
-	# O modo automático também aciona as habilidades do líder.
-	battle.auto_habilidades = autopilot != null and autopilot.is_enabled()
-	battle.iniciar([creature.data], creature.global_position, creature)
+	# O combate agora acontece no mundo: encostar num monstro nao abre tela
+	# nenhuma, quem bate e o proprio monstro (ver WildCreature._trigger_encounter).
+	# Este gancho fica so para o que ainda quer saber que houve contato.
+	pass
 
 
 func _ao_iniciar_batalha(_aliados: Array, _inimigos: Array) -> void:

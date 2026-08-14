@@ -91,6 +91,8 @@ var pet: PetAcompanhante = null
 ## Altura em que o avatar esta agora, entre o chao (0) e a sela. Interpolada
 ## para a subida nao ser um teleporte.
 var _altura_na_sela: float = 0.0
+## Segundos que faltam para o proximo golpe. Ver CombateDeAcao.ESPERA_ENTRE_GOLPES.
+var _espera_do_golpe: float = 0.0
 
 
 func _ready() -> void:
@@ -256,6 +258,8 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		global_position.y = 0.0
 
+	if _espera_do_golpe > 0.0:
+		_espera_do_golpe = maxf(0.0, _espera_do_golpe - delta)
 	_atualizar_montaria(delta)
 	_update_facing(delta)
 	_update_avatar(running)
@@ -398,6 +402,11 @@ func _report_position() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
+		return
+
+	if event.is_action_pressed("atacar"):
+		get_viewport().set_input_as_handled()
+		atacar()
 		return
 
 	if event.is_action_pressed("montaria"):
@@ -581,3 +590,75 @@ func restaurar_pet() -> void:
 		if String(item.get("effect", "")) == "pet":
 			alternar_pet(String(item.get("pet_modelo", "")))
 			return
+
+
+# --- combate ------------------------------------------------------------------
+
+## Um golpe no que estiver na frente.
+##
+## Acerta **um** alvo, o mais proximo: acertar todos de uma vez faria um grupo
+## de monstros ser mais facil que um sozinho, que e o contrario do esperado.
+##
+## Nao existe "modo de combate". Se ha monstro na frente, o golpe entra; se nao
+## ha, o personagem golpeia o ar. E o que faz o combate acontecer no mundo, na
+## camera que o jogador escolheu, em vez de numa tela separada.
+func atacar() -> void:
+	if not input_enabled or _espera_do_golpe > 0.0 or voando:
+		return
+	if sentado:
+		levantar()
+
+	_espera_do_golpe = CombateDeAcao.ESPERA_ENTRE_GOLPES
+	if avatar != null:
+		avatar.play_interact()
+	AudioManager.tocar(&"golpe")
+
+	var dados := GameManager.player
+	if dados == null:
+		return
+
+	var candidatos := get_tree().get_nodes_in_group("wild_creature")
+	var alvos := CombateDeAcao.alvos_na_frente(self, candidatos)
+	if OS.is_debug_build():
+		GameLog.verbose(GameLog.Channel.BATTLE,
+			"Golpe: %d monstro(s) no mapa, %d no alcance." % [candidatos.size(), alvos.size()])
+	if alvos.is_empty():
+		return
+
+	var alvo := alvos[0] as WildCreature
+	if alvo == null or alvo.data == null:
+		return
+
+	var resultado := CombateDeAcao.golpe(dados.ataque(), alvo.data.defense(), "", alvo.data.element())
+	alvo.receber_dano(resultado, self)
+
+
+## Leva um golpe de um monstro. Devolve quanto entrou.
+func receber_dano(resultado: DamageCalculator.Resultado, de: Node3D = null) -> int:
+	var dados := GameManager.player
+	if dados == null or not dados.esta_vivo():
+		return 0
+
+	var entrou := dados.sofrer_dano(resultado.amount)
+	if entrou <= 0:
+		return 0
+
+	FloatingText3D.mostrar(self, global_position + Vector3(0, 2.0, 0), FloatingText3D.dano(resultado))
+	if camera_rig != null and is_instance_valid(camera_rig):
+		camera_rig.tremer(0.10, 0.18)
+
+	if not dados.esta_vivo():
+		_cair(de)
+	return entrou
+
+
+## Caiu. Cura de graca e volta a andar, no lugar onde estava.
+##
+## Sem penalidade nenhuma por enquanto, e de proposito: penalidade de morte e
+## decisao de desenho de jogo, e inventar uma agora seria escolher no lugar de
+## quem manda no jogo.
+func _cair(_de: Node3D) -> void:
+	var dados := GameManager.player
+	Notify.bad("Você caiu.")
+	GameLog.info(GameLog.Channel.BATTLE, "Jogador caiu e voltou de pe.")
+	dados.restaurar_vida()
