@@ -1,0 +1,53 @@
+{
+  "_comentario": [
+    "Classes do jogador. Ordem importa: o indice 0 e o que sai de quem nao escolhe.",
+    "Por enquanto elas mudam o que o personagem e; o que cada uma faz em combate",
+    "entra quando o combate de acao existir.",
+    "",
+    "`arma` e o nome da peca no modelo KayKit (1H_Sword, Knife...) para os corpos",
+    "que trazem arma embutida. Nos corpos modulares ainda nao ha arma, e o campo",
+    "fica ignorado em vez de quebrar."
+  ],
+  "classes": [
+    {
+      "id": "espadachim",
+      "nome": "Espadachim",
+      "descricao": "Bate de perto e aguenta apanhar. Espada em uma mao.",
+      "arma": "1H_Sword",
+      "vida": 1.2,
+      "ataque": 1.1,
+      "defesa": 1.15,
+      "velocidade": 0.95
+    },
+    {
+      "id": "gatuno",
+      "nome": "Gatuno",
+      "descricao": "Rapido e frageil. Acerta muitas vezes antes de apanhar uma.",
+      "arma": "Knife",
+      "vida": 0.85,
+      "ataque": 1.05,
+      "defesa": 0.85,
+      "velocidade": 1.3
+    },
+    {
+      "id": "mago",
+      "nome": "Mago",
+      "descricao": "Dano de longe. Se deixar encostar, cai.",
+      "arma": "1H_Wand",
+      "vida": 0.75,
+      "ataque": 1.35,
+      "defesa": 0.75,
+      "velocidade": 1.0
+    },
+    {
+      "id": "sacerdote",
+      "nome": "Sacerdote",
+      "descricao": "Cura e sustenta. Bate pouco, mas nao morre.",
+      "arma": "Spellbook",
+      "vida": 1.05,
+      "ataque": 0.8,
+      "defesa": 1.1,
+      "velocidade": 1.0
+    }
+  ]
+}

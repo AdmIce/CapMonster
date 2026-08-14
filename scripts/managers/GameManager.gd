@@ -52,7 +52,7 @@ func has_player() -> bool:
 ## `slot` -1 deixa o SaveManager escolher o primeiro slot livre; -1 continua
 ## quando todos estão ocupados, porque criar sobre outro personagem nunca é a
 ## intenção.
-func new_game(display_name: String, appearance: Dictionary, slot: int = -1) -> PlayerData:
+func new_game(display_name: String, appearance: Dictionary, classe_id: String = "espadachim", slot: int = -1) -> PlayerData:
 	if slot < 0:
 		slot = SaveManager.free_slot()
 	if slot < 0:
@@ -67,6 +67,7 @@ func new_game(display_name: String, appearance: Dictionary, slot: int = -1) -> P
 	if player.display_name == "":
 		player.display_name = "Treinador"
 	player.appearance = appearance.duplicate()
+	player.classe_id = classe_id
 
 	var first_map := DataManager.first_map_id()
 	player.current_map = first_map

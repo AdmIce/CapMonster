@@ -187,6 +187,23 @@ func save_metadata(slot: int = 0) -> Dictionary:
 	}
 
 
+## Ja existe personagem com este nome?
+##
+## Compara sem espacos nas pontas e sem diferenciar maiuscula: "David", "david"
+## e "David " sao o mesmo personagem para quem joga, e deixar os tres coexistir
+## e o mesmo que nao ter a regra.
+func nome_em_uso(nome: String, ignorando_slot: int = -1) -> bool:
+	var alvo := nome.strip_edges().to_lower()
+	if alvo == "":
+		return false
+	for meta in save_slots():
+		if int(meta.get("slot", -1)) == ignorando_slot:
+			continue
+		if String(meta.get("name", "")).strip_edges().to_lower() == alvo:
+			return true
+	return false
+
+
 ## Metadados de todos os slots ocupados, em ordem. Cada item traz o índice no
 ## campo "slot" para a tela de seleção saber onde continuar, apagar ou falar.
 func save_slots() -> Array[Dictionary]:

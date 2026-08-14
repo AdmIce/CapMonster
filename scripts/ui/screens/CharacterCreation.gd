@@ -13,6 +13,7 @@ const OPCOES_POR_LINHA := 3
 
 var _appearance := {
 	"body": 0,
+	"classe": 0,
 	"hair": 0,
 	"hair_color": 0,
 	"skin": 0,
@@ -22,6 +23,8 @@ var _appearance := {
 var _avatar: PlayerAvatar = null
 var _pivot: Node3D = null
 var _name_field: LineEdit = null
+var _aviso_nome: Label = null
+var _descricao_classe: Label = null
 var _outfit_label: Label = null
 var _option_rows: Dictionary = {}   ## chave -> Array[Button]
 var _linhas: Dictionary = {}        ## chave -> Control da linha inteira
@@ -153,6 +156,30 @@ func _build_options() -> Control:
 	_name_field = Design.line_edit("Treinador", 16)
 	column.add_child(_name_field)
 
+	# Avisa enquanto digita, e nao so ao confirmar: descobrir que o nome esta
+	# tomado depois de escolher corpo, cabelo e roupa e fazer a pessoa refazer
+	# tudo por causa de um campo que estava na primeira linha.
+	_aviso_nome = Design.caption("")
+	column.add_child(_aviso_nome)
+	_name_field.text_changed.connect(func(texto: String):
+		var limpo := texto.strip_edges()
+		if limpo != "" and SaveManager.nome_em_uso(limpo):
+			_aviso_nome.text = "Já existe um personagem com esse nome."
+			_aviso_nome.add_theme_color_override("font_color", Design.DANGER)
+		else:
+			_aviso_nome.text = ""
+	)
+
+	column.add_child(Design.divider())
+
+	var nomes_de_classe: Array[String] = []
+	for c in DataManager.classes():
+		nomes_de_classe.append(String(c.get("nome", "?")))
+	column.add_child(_option_row("CLASSE", "classe", nomes_de_classe))
+
+	_descricao_classe = Design.caption("")
+	_descricao_classe.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_descricao_classe)
 	column.add_child(Design.divider())
 
 	column.add_child(_option_row("PERSONAGEM", "body", PlayerAvatar.BODY_TYPES))
@@ -178,7 +205,20 @@ func _build_options() -> Control:
 	column.add_child(_outfit_label)
 
 	_ajustar_ao_kit()
+	_atualizar_classe()
 	return panel
+
+
+## O texto da classe muda junto com o botao. Uma lista de quatro nomes sem
+## explicacao obriga a escolher no escuro.
+func _atualizar_classe() -> void:
+	if _descricao_classe == null:
+		return
+	var lista := DataManager.classes()
+	if lista.is_empty():
+		return
+	var escolhida: Dictionary = lista[clampi(int(_appearance.get("classe", 0)), 0, lista.size() - 1)]
+	_descricao_classe.text = String(escolhida.get("descricao", ""))
 
 
 ## Esconde cabelo, cor, pele e roupa quando o personagem selecionado nao aceita
@@ -290,6 +330,8 @@ func _select(key: String, index: int) -> void:
 		# Trocar de personagem pode trocar de kit, e cada kit aceita um conjunto
 		# diferente de opções.
 		_ajustar_ao_kit()
+	if key == "classe":
+		_atualizar_classe()
 	if _avatar != null:
 		_avatar.apply_appearance(_appearance)
 	if _outfit_label != null:
@@ -316,7 +358,22 @@ func _on_confirm() -> void:
 	var chosen_name := _name_field.text.strip_edges()
 	if chosen_name == "":
 		chosen_name = "Treinador"
-	var novo := GameManager.new_game(chosen_name, _appearance)
+
+	# Nome repetido nao passa. Sem isto, dois "David" na selecao sao
+	# indistinguiveis -- e online o nome e o que identifica a pessoa.
+	if SaveManager.nome_em_uso(chosen_name):
+		Notify.bad("Já existe um personagem chamado %s. Escolha outro nome." % chosen_name)
+		_name_field.grab_focus()
+		_name_field.select_all()
+		return
+
+	var lista_de_classes := DataManager.classes()
+	var indice_classe := clampi(int(_appearance.get("classe", 0)), 0, maxi(0, lista_de_classes.size() - 1))
+	var id_da_classe := "espadachim"
+	if not lista_de_classes.is_empty():
+		id_da_classe = String(lista_de_classes[indice_classe].get("id", "espadachim"))
+
+	var novo := GameManager.new_game(chosen_name, _appearance, id_da_classe)
 	if novo == null:
 		# Todos os slots ocupados: criar agora sobrescreveria outro personagem,
 		# então o caminho certo é voltar para a seleção e decidir quem apagar.

@@ -19,6 +19,7 @@ const FILES := {
 	"items": "items.json",
 	"maps": "maps.json",
 	"roupas": "roupas.json",
+	"classes": "classes.json",
 	"quests": "quests.json",
 	"intro": "intro.json",
 }
@@ -268,6 +269,21 @@ func get_starting_inventory() -> Dictionary:
 
 
 # --- maps / quests ------------------------------------------------------------
+
+## As classes do jogador, na ordem em que a criacao mostra.
+func classes() -> Array:
+	return _raw.get("classes", {}).get("classes", [])
+
+
+## A classe por id, ou a primeira quando o id nao existe -- personagem salvo
+## antes das classes existirem cai na primeira em vez de ficar sem nenhuma.
+func classe(id: String) -> Dictionary:
+	var lista := classes()
+	for c in lista:
+		if String(c.get("id", "")) == id:
+			return c
+	return lista[0] if not lista.is_empty() else {}
+
 
 ## Conjuntos de roupa do kit modular, por sexo do corpo.
 func conjuntos_de_roupa(sexo: String) -> Array:

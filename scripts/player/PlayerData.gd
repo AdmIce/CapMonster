@@ -17,6 +17,13 @@ const TEAM_SIZE := 3
 
 var display_name: String = "Treinador"
 
+## Classe escolhida na criacao (espadachim, gatuno, mago, sacerdote).
+##
+## Guardada por **id de texto**, e nao pelo indice da lista: reordenar as
+## classes um dia nao pode transformar o Mago de alguem em Sacerdote. Foi o erro
+## que ja aconteceu aqui com cabelo e roupa, que sao guardados por indice.
+var classe_id: String = "espadachim"
+
 ## Identidade do jogador, sorteada uma vez e guardada no save.
 ##
 ## O servidor guarda a ficha de cada um por **isto**, e nao pelo nome. Guardar
@@ -318,6 +325,7 @@ func to_dict() -> Dictionary:
 		"v": SAVE_VERSION,
 		"name": display_name,
 		"jogador_id": jogador_id,
+		"classe": classe_id,
 		"appearance": appearance.duplicate(),
 		"level": level,
 		"xp": xp,
@@ -403,6 +411,9 @@ static func from_dict(source: Dictionary) -> PlayerData:
 	data.jogador_id = String(source.get("jogador_id", ""))
 	if data.jogador_id == "":
 		data.jogador_id = _sortear_id()
+	# Personagem criado antes das classes existirem cai na primeira, em vez de
+	# ficar sem nenhuma e quebrar tudo que consultar a classe.
+	data.classe_id = String(source.get("classe", "espadachim"))
 	data.appearance = (source.get("appearance", {}) as Dictionary).duplicate()
 	data.level = maxi(1, int(source.get("level", 1)))
 	data.xp = int(source.get("xp", 0))
